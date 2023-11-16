@@ -86,7 +86,6 @@ type TestData struct {
 
 func main() {
 	ssePubSub := NewSSEPubSubHandler()
-	ssePubSub.Timeout = 10 * time.Second
 
 	http.HandleFunc("/add", ssePubSub.AddClient)      // Add client endpoint
 	http.HandleFunc("/sub", ssePubSub.Subscribe)      // Subscribe endpoint

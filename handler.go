@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/apex/log"
 )
@@ -14,7 +13,6 @@ type sSEPubSubHandler struct {
 	clients      map[string]*client
 	publicTopics map[string]*topic
 	lock         sync.RWMutex
-	Timeout      time.Duration
 
 	ClientIDQueryParameter string
 	TopicQueryParameter    string
@@ -25,7 +23,6 @@ func NewSSEPubSubHandler() *sSEPubSubHandler {
 	return &sSEPubSubHandler{
 		clients:      make(map[string]*client),
 		publicTopics: make(map[string]*topic),
-		Timeout:      10 * time.Second,
 
 		ClientIDQueryParameter: "client_id",
 		TopicQueryParameter:    "topic",
@@ -148,18 +145,11 @@ func (s *sSEPubSubHandler) Event(w http.ResponseWriter, r *http.Request) {
 
 	// Keep the connection open until it's closed by the client
 	for {
-		select {
-		case msg := <-client.stream:
-            log.Infof("Sending message to client %s: %s", clientID, msg)
-			fmt.Fprintf(w, "data: %s\n\n", msg)
-			if f, ok := w.(http.Flusher); ok {
-				f.Flush()
-			}
-		// case <-time.After(s.Timeout):
-		// 	return
-		// }
-        default:
-            time.Sleep(100 * time.Millisecond)
+        msg := <-client.stream
+        log.Infof("Sending message to client %s: %s", clientID, msg)
+        fmt.Fprintf(w, "data: %s\n\n", msg)
+        if f, ok := w.(http.Flusher); ok {
+            f.Flush()
         }
 	}
 }
