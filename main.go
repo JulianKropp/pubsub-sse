@@ -11,39 +11,40 @@ import (
 // ssePubSub is Handler which send live data to the client using SSE.
 // The client receves a json string over SSE which looks like this:
 // {
-// 	"topics": {
-// 		"list": [
-// 			{"name": "topic1", "type": "PUBLIC"},
-// 			{"name": "topic2/test", "type": "PRIVATE"},
-// 			{"name": "topic3/test/test", "type": "PRIVATE"},
-// 			{"name": "topic4/status", "type": "GROUP"},
-// 			{"name": "topic5", "type": "PUBLIC"},
-// 			{"name": "topic10", "type": "PUBLIC"},
-// 			{"name": "topic11/test/test", "type": "PRIVATE"},
-// 			...
-// 		],
-// 		"subscribed": ["topic1", "topic2/test", "topic3/test/test", "topic4/status", ...],
-// 		"unsubsribed": ["topic5", "topic10", "topic11/test/test", ...],
-// 	},
+// 	"sys": [
+// 		{
+// 			"topics": [
+// 				{"name": "topic1", "type": "PUBLIC"},
+// 				{"name": "topic2/test", "type": "PRIVATE"},
+// 				{"name": "topic3/test/test", "type": "PRIVATE"},
+// 				{"name": "topic4/status", "type": "GROUP"},
+// 				{"name": "topic5", "type": "PUBLIC"},
+// 				{"name": "topic10", "type": "PUBLIC"},
+// 				{"name": "topic11/test/test", "type": "PRIVATE"}
+// 			]
+// 		},
+// 		{
+// 			"subscribed": ["topic1", "topic2/test", "topic3/test/test", "topic4/status"]
+// 		},
+// 		{
+// 			"unsubsribed": ["topic5", "topic10", "topic11/test/test"]
+// 		}
+// 	],
 //    "updates":[
 //       {
 //          "topic1":{
-//             ... data ...
 //          }
 //       },
 //       {
 //          "topic2/test":{
-//             ... data ...
 //          }
-//       },
-// 	  ...
+//       }
 //    ]
 // }
 
-// There are 4 types of topics:
+// There are 3 types of topics:
 // PUBLIC: All clients can subscribed to this topic. Data send in this topic will be send to all clients.
-// PRIVATE: All clients can subscribed to this topic. Data send in this topic can only be seen by this client and the server.
-// PRIVATE: Only thhis client can subscribed to this topic. Data send in this topic can only be seen by this client.
+// PRIVATE: Only thhis client can subscribed to this topic. Data send in this topic will be send to only this client
 // GROUP: All clients in the same group can subscribed to this topic. Data send in this topic will be send to all clients in the same group.
 
 // Topics are case sensetive and are limited to the alphabet, numbers, underscores.
@@ -54,28 +55,28 @@ import (
 // Example: If you subscribe to topic1, you will also subscribe to topic1/test and topic1/test/test, ...
 // Example: If you subscribe to topic1/test, you will also subscribe to topic1/test/test, ...
 
-// if somehow multiple topics of different types exists, the order of the types is:
+// if somehow multiple topics with the same name of different types exists, the order of the types is:
 // 1. PRIVATE
 // 2. GROUP
-// 3. PRIVATE/PUBLIC
+// 3. PUBLIC
 // This ensures PRIVATE and GROUP topics can not be overridden and made public exededently.
 
-// topics.list: List of all public, private and private private topics
-// topics.subscribed: List of all public, private and private private topics the client is subscribed to
-// topics.unsubscribed: List of all public, private and private private topics the client is no longer subscribed to
-// updates: List of all public, private and private private topics the client is subscribed to and which have been updated
+// sys.topics: Event: List of all public, group and private topics
+// sys.subscribed: Event: List of all public, group and private topics the client is subscribed to
+// sys.unsubscribed: Event: List of all public, group and private topics the client is no longer subscribed to
+// updates: List of all public, group and private topics the client is subscribed to and which have been updated with new data
 
 
 // Only changes will be send to the client:
 
-// If a topic is added, the hole topics.list will be send to the client
+// If a topic is added, the hole sys.list will be send to the client
 
-// If a topic is removed, the hole new topics.list will be send to the client, and
-// only this topic which was removed will be send in topics.unsubsribed
+// If a topic is removed, the hole new sys.list will be send to the client, and
+// only this topic which was removed will be send in sys.unsubsribed
 
-// If a client is subscribed to a topic, only the topic will be send to the client in topics.subscribed.
+// If a client is subscribed to a topic, only the topic will be send to the client in sys.subscribed.
 
-// If a client is unsubscribed from a topic, only the topic will be send to the client in topics.unsubscribed.
+// If a client is unsubscribed from a topic, only the topic will be send to the client in sys.unsubscribed.
 
 // If there is a new update for a topic, only this topic will be send to the client in updates.
 
