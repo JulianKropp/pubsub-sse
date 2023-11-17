@@ -70,15 +70,6 @@ func (s *sSEPubSubHandler) RemovePublicTopic(name string) error {
 	return nil
 }
 
-// Remove client from topic
-func (t *topic) removeClient(id string) {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	if t.Clients != nil {
-		delete(t.Clients, id)
-	}
-}
-
 func (s *sSEPubSubHandler) GetTopics() map[string]*topic {
 	s.lock.Lock()
 	defer s.lock.Unlock()
