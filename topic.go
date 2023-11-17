@@ -56,9 +56,15 @@ func (s *sSEPubSubHandler) RemovePublicTopic(name string) error {
 		return fmt.Errorf("topic %s does not exists", name)
 	}
 
-	// Remove from list of topics. This automaticly removes all clients which have this topic subscribed
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	// Unsubscribe all clients from this topic
+	for _, client := range s.publicTopics[name].Clients {
+		client.Unsub(name)
+	}
+
+	// Remove from list of topics. This automaticly removes all clients which have this topic subscribed
 	delete(s.publicTopics, name)
 
 	return nil

@@ -85,9 +85,14 @@ func (s *sSEPubSubHandler) RemoveClient(id string) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// remove all private topics
+	// remove client from all private topics
 	for _, topic := range cl.privateTopics {
-		topic.removeClient(id)
+		cl.Unsub(topic.Name)
+	}
+
+	// remove client from all public topics
+	for _, topic := range cl.publicTopics {
+		cl.Unsub(topic.Name)
 	}
 
 	delete(s.clients, id)
@@ -130,10 +135,11 @@ func (c *client) RemovePrivateTopic(name string) error {
 		return fmt.Errorf("topic %s does not exists", name)
 	}
 
-	// Remove this client from the topic
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	delete(c.privateTopics[name].Clients, c.id)
+
+	// Unsubscribe all clients from this topic
+	c.Unsub(name)
 
 	// Remove from list of topics
 	delete(c.privateTopics, name)
@@ -186,6 +192,7 @@ func (c *client) Sub(name string) error {
 	} else if _, exists := c.publicTopics[name]; exists {
 		topic = c.publicTopics[name]
 	} else {
+		c.lock.Unlock()
 		return fmt.Errorf("topic %s does not exists", name)
 	}
 
@@ -205,7 +212,6 @@ func (c *client) Sub(name string) error {
 // Unsubscribe from topic
 func (c *client) Unsub(name string) error {
 	c.lock.Lock()
-	defer c.lock.Unlock()
 
 	// if topic does not exists, return error
 	var topic *topic = nil
@@ -217,11 +223,23 @@ func (c *client) Unsub(name string) error {
 	} else if _, exists := c.publicTopics[name]; exists {
 		topic = c.publicTopics[name]
 	} else {
+		c.lock.Unlock()
 		return fmt.Errorf("topic %s does not exists", name)
+	}
+
+	// if client is not subscribed to topic, return error
+	if _, exists := topic.Clients[c.id]; !exists {
+		c.lock.Unlock()
+		return fmt.Errorf("client %s is not subscribed to topic %s", c.id, name)
 	}
 
 	// Remove this client from the topic
 	delete(topic.Clients, c.id)
+
+	c.lock.Unlock()
+
+	// Inform client about unsubscribed topic
+	c.sendUnsubscribedTopic(topic)
 
 	return nil
 }
@@ -386,6 +404,33 @@ func (c *client) sendNewSubscribedTopic(top *topic) error {
 		Name: top.Name,
 	}
 	fulldata.Sys[0].Type = "subscribed"
+	fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
+
+	jsonData, err := json.Marshal(fulldata)
+	if err != nil {
+		return err
+	}
+
+	c.lock.Lock()
+	if c.status == Receving {
+		c.stream <- string(jsonData)
+	}
+	c.lock.Unlock()
+
+	return nil
+}
+
+func (c *client)sendUnsubscribedTopic(top *topic) error {
+	fulldata := &eventData{
+		Sys:     []eventDataSys{},
+	}
+	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
+
+	// Subscribed
+	t := eventDataSysList{
+		Name: top.Name,
+	}
+	fulldata.Sys[0].Type = "unsubscribed"
 	fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
 
 	jsonData, err := json.Marshal(fulldata)
