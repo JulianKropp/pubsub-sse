@@ -175,7 +175,6 @@ func (c *client) GetSubscribedTopics() map[string]*topic {
 // Subscribe to topic
 func (c *client) Sub(name string) error {
 	c.lock.Lock()
-	defer c.lock.Unlock()
 
 	// if topic does not exists, return error
 	var topic *topic = nil
@@ -191,7 +190,14 @@ func (c *client) Sub(name string) error {
 	}
 
 	// Add this client to the topic
+	topic.lock.Lock()
 	topic.Clients[c.id] = c
+	topic.lock.Unlock()
+
+	c.lock.Unlock()
+
+	// Send new subscribed topics to client
+	c.sendNewSubscribedTopic(topic)
 
 	return nil
 }
@@ -354,6 +360,33 @@ func (c *client) sendNewTopicsList() error {
 			fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
 		}
 	}
+
+	jsonData, err := json.Marshal(fulldata)
+	if err != nil {
+		return err
+	}
+
+	c.lock.Lock()
+	if c.status == Receving {
+		c.stream <- string(jsonData)
+	}
+	c.lock.Unlock()
+
+	return nil
+}
+
+func (c *client) sendNewSubscribedTopic(top *topic) error {
+	fulldata := &eventData{
+		Sys:     []eventDataSys{},
+	}
+	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
+
+	// Subscribed
+	t := eventDataSysList{
+		Name: top.Name,
+	}
+	fulldata.Sys[0].Type = "subscribed"
+	fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
 
 	jsonData, err := json.Marshal(fulldata)
 	if err != nil {
