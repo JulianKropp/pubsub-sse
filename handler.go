@@ -176,8 +176,8 @@ func (s *sSEPubSubHandler) Event(w http.ResponseWriter, r *http.Request) {
 
 // Publish sends a message to all subscribed clients on a topic.
 func (s *sSEPubSubHandler) Pub(topic string, message interface{}) error {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	// Find topic.
 	t, exists := s.publicTopics[topic]
@@ -186,18 +186,8 @@ func (s *sSEPubSubHandler) Pub(topic string, message interface{}) error {
 	}
 
 	for _, client := range t.Clients {
-        // Convert message to json
-        jsonMessage, err := client.generateUpdateData(t, message)
-        if err != nil {
-            return err
-        }
-
-		if client.status == Waiting {
-			log.Debugf("client %s is not receving data", client.id)
-			continue
-		}
-
-		client.stream <- string(jsonMessage)
+        // Convert message to json and send to client
+        client.sendUpdate(t, message)
 	}
 
 	return nil

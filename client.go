@@ -117,6 +117,9 @@ func (c *client) NewPrivateTopic(name string) error {
 	c.privateTopics[name] = top
 	c.lock.Unlock()
 
+	// Send new topics to client
+	c.sendNewTopicsList()
+
 	return nil
 }
 
@@ -219,26 +222,24 @@ func (c *client) Unsub(name string) error {
 
 // Publish a message
 func (c *client) Pub(to string, message interface{}) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	if c.status == Waiting {
 		return fmt.Errorf("client %s is not receving data", c.id)
 	}
 
 	// if topic does not exists, return error
+	c.lock.Lock()
 	t, exists := c.privateTopics[to]
 	if !exists {
+		c.lock.Unlock()
 		return fmt.Errorf("topic %s does not exists", to)
 	}
+	c.lock.Unlock()
 
 	// Convert message to json
-	jsonMessage, err := c.generateUpdateData(t, message)
+	err := c.sendUpdate(t, message)
 	if err != nil {
 		return err
 	}
-
-	c.stream <- string(jsonMessage)
 
 	return nil
 }
@@ -263,7 +264,7 @@ type eventDataUpdates struct {
 	Data  interface{} `json:"data"`
 }
 
-func (c *client) generateUpdateData(to *topic, data interface{}) (string, error) {
+func (c *client) sendUpdate(to *topic, data interface{}) error {
 	fulldata := &eventData{
 		Updates: []eventDataUpdates{},
 	}
@@ -277,10 +278,16 @@ func (c *client) generateUpdateData(to *topic, data interface{}) (string, error)
 
 	jsonData, err := json.Marshal(fulldata)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return string(jsonData), nil
+	c.lock.Lock()
+	if c.status == Receving {
+		c.stream <- string(jsonData)
+	}
+	c.lock.Unlock()
+
+	return nil
 }
 
 func (c *client) generateInit() (string, error) {
@@ -325,4 +332,39 @@ func (c *client) generateInit() (string, error) {
 		}
 
 		return string(jsonData), nil
+}
+
+func (c *client) sendNewTopicsList() error {
+	topics := c.GetTopics()
+
+	fulldata := &eventData{
+		Sys:     []eventDataSys{},
+	}
+	if len(topics) > 0 {
+		fulldata.Sys = append(fulldata.Sys, eventDataSys{})
+
+		// Add all topics and subscribed topics to fulldata
+		for _, topic := range topics {
+			// Topics
+			t := eventDataSysList{
+				Name: topic.Name,
+				Type: string(topic.Type),
+			}
+			fulldata.Sys[0].Type = "topics"
+			fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
+		}
+	}
+
+	jsonData, err := json.Marshal(fulldata)
+	if err != nil {
+		return err
+	}
+
+	c.lock.Lock()
+	if c.status == Receving {
+		c.stream <- string(jsonData)
+	}
+	c.lock.Unlock()
+
+	return nil
 }

@@ -39,6 +39,11 @@ func (s *sSEPubSubHandler) NewPublicTopic(name string) error {
 	// Add to list of topics
 	s.lock.Lock()
 	s.publicTopics[name] = top
+
+	// Send new topics to all clients
+	for _, client := range s.clients {
+		client.sendNewTopicsList()
+	}
 	s.lock.Unlock()
 
 	return nil
