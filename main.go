@@ -142,20 +142,7 @@ func main() {
 		log.Println(err)
 	}
 
-	// for {
-	// 	time.Sleep(5 * time.Second)
-
-	// 	// Publish a message to all clients
-	// 	data := TestData{
-	// 		Testdata: "testdata",
-	// 	}
-	// 	err = ssePubSub.Pub("server/status", data)
-	// 	if err != nil {
-	// 		log.Println(err)
-	// 	}
-	// }
-
-	// lastclient := ""
+	lastclient := ""
 
 	clients := ssePubSub.GetClients()
 	for _, client := range clients {
@@ -174,62 +161,78 @@ func main() {
 		}
 		client.Pub(topic, data)
 
-		// lastclient = client.id
+		lastclient = client.id
 	}
 
-	// client := clients[lastclient]
-	// if client == nil {
-	// 	panic("client is nil")
-	// }
+	client := clients[lastclient]
+	if client == nil {
+		panic("client is nil")
+	}
 
-	// err = ssePubSub.NewPrivateTopic("private/private/topic", client) // Create a new topic which is private Private to one clients
-	// if err != nil {
-	// 	log.Println(err)
-	// }
+	err = client.NewPrivateTopic("private/private/topic") // Create a new topic which is private to one clients
+	if err != nil {
+		log.Println(err)
+	}
 
-	// // List all public, private and private private topics of a client
-	// topics := client.GetTopics()
-	// for _, topic := range topics {
-	// 	log.Println(topic)
-	// }
+	// List all public, private and private private topics of a client
+	topics := client.GetTopics()
+	for _, topic := range topics {
+		log.Println(topic)
+	}
 
-	// // Subscribe a client to a topic
-	// if err := client.Sub("private/private/topic"); err != nil { // Subscribe to topic private and to all sub topics like private/test/topic and private/private/topic, ...
-	// 	log.Println(err)
-	// }
+	// Subscribe a client to a topic
+	if err := client.Sub("private/private/topic"); err != nil { // Subscribe to topic private and to all sub topics like private/test/topic and private/private/topic, ...
+		log.Println(err)
+	}
 
-	// // Get a list of all topics a client is subscribed to
-	// topics = client.GetSubscribedTopics()
-	// for _, topic := range topics {
-	// 	log.Println(topic)
-	// }
+	// Get a list of all topics a client is subscribed to
+	topics = client.GetSubscribedTopics()
+	for _, topic := range topics {
+		log.Println(topic)
+	}
 
-	// // Unsubscribe a client from a topic
-	// if err := client.Unsub("private/private/topic"); err != nil {
-	// 	log.Println(err)
-	// }
+	// Unsubscribe a client from a topic
+	if err := client.Unsub("private/private/topic"); err != nil {
+		log.Println(err)
+	}
 
-	// // Remove a client from the server
-	// if err := ssePubSub.RemoveClient(client.id); err != nil {
-	// 	log.Println(err)
-	// }
+	// Remove a client from the server
+	if err := ssePubSub.RemoveClient(client.id); err != nil {
+		log.Println(err)
+	}
 
-	// // List all public topics
-	// topics = ssePubSub.GetTopics()
-	// for _, topic := range topics {
-	// 	log.Println(topic)
-	// }
+	// List all public topics
+	topics = ssePubSub.GetTopics()
+	for _, topic := range topics {
+		log.Println(topic)
+	}
 
-	// // Remove a public or private topic from the server and unsubscribe all clients from it
-	// if err := ssePubSub.RemovePublicTopic("server/status"); err != nil {
-	// 	log.Println(err)
-	// }
+	// Remove a public or private topic from the server and unsubscribe all clients from it
+	if err := ssePubSub.RemovePublicTopic("server/status"); err != nil {
+		log.Println(err)
+	}
 
-	// // List all public topics
-	// topics = ssePubSub.GetTopics()
-	// for _, topic := range topics {
-	// 	log.Println(topic)
-	// }
+	// List all public topics
+	topics = ssePubSub.GetTopics()
+	for _, topic := range topics {
+		log.Println(topic)
+	}
 
-	time.Sleep(500 * time.Second)
+	err = ssePubSub.NewPublicTopic("server/status") // Create a new topic which is public to all clients
+	if err != nil {
+		log.Println(err)
+	}
+
+	for {
+		time.Sleep(5 * time.Second)
+
+		// Publish a message to all clients
+		data := TestData{
+			Testdata: "testdata",
+		}
+		err = ssePubSub.Pub("server/status", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
 }
