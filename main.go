@@ -61,16 +61,13 @@ import (
 
 // Empty example:
 // {
-// 	"sys":[
-// 	],
-// 	"updates":[
-// 	]
+// 	"sys": null,
+// 	"updates": null
 // }
 
 // Data update example:
 // {
-// 	"sys":[
-// 	],
+// 	"sys": null,
 // 	"updates":[
 // 	   {
 // 		  "topic":"topic",
@@ -129,7 +126,7 @@ func main() {
 
 	http.HandleFunc("/add", ssePubSub.AddClient)      // Add client endpoint
 	http.HandleFunc("/sub", ssePubSub.Subscribe)      // Subscribe endpoint
-	http.HandleFunc("/unsusb", ssePubSub.Unsubscribe) // Unsubscribe endpoint
+	http.HandleFunc("/unsub", ssePubSub.Unsubscribe) // Unsubscribe endpoint
 	http.HandleFunc("/event", ssePubSub.Event)        // SSE endpoint
 	go func() {
 		log.Fatal(http.ListenAndServe(":8080", nil))

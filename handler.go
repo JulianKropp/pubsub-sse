@@ -143,11 +143,26 @@ func (s *sSEPubSubHandler) Event(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
+	// Send initial msg
+	msg, err := client.generateInit()
+	if err != nil {
+		log.Errorf("Error generating init message: %s", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, `{"ok": false, "error": "internal server error"}`)
+		return
+	}
+	log.Infof("Sending init message to client %s: %s", clientID, msg)
+	fmt.Fprintf(w, "%s", msg)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+
 	// Keep the connection open until it's closed by the client
 	for {
         msg := <-client.stream
         log.Infof("Sending message to client %s: %s", clientID, msg)
-        fmt.Fprintf(w, "data: %s\n\n", msg)
+        fmt.Fprintf(w, "%s", msg)
         if f, ok := w.(http.Flusher); ok {
             f.Flush()
         }

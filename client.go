@@ -252,35 +252,8 @@ type eventDataUpdates struct {
 }
 
 func (c *client) generateUpdateData(to *topic, data interface{}) (string, error) {
-    // Get all topics of a client
-    topics := c.GetTopics()
-	subtopics := c.GetSubscribedTopics()
-
 	fulldata := &eventData{
-		Sys:     []eventDataSys{},
-	}
-	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
-	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
-	// Add all topics and subscribed topics to fulldata
-	for _, topic := range topics {
-		// Topics
-		t := eventDataSysList{
-			Name: topic.Name,
-			Type: string(topic.Type),
-		}
-		fulldata.Sys[0].Type = "topics"
-		fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
-	}
-
-	// Add all subscribed topics to fulldata
-	for _, topic := range subtopics {
-		t := eventDataSysList{
-			Name: topic.Name,
-		}
-
-		// Subscribed
-		fulldata.Sys[1].Type = "subscribed"
-		fulldata.Sys[1].List = append(fulldata.Sys[1].List, t)
+		Updates: []eventDataUpdates{},
 	}
 
 	// Updates
@@ -296,4 +269,48 @@ func (c *client) generateUpdateData(to *topic, data interface{}) (string, error)
 	}
 
 	return string(jsonData), nil
+}
+
+func (c *client) generateInit() (string, error) {
+	    // Get all topics of a client
+		topics := c.GetTopics()
+		subtopics := c.GetSubscribedTopics()
+	
+		fulldata := &eventData{
+			Sys:     []eventDataSys{},
+		}
+		if len(topics) > 0 {
+			fulldata.Sys = append(fulldata.Sys, eventDataSys{})
+		}
+		if len(subtopics) > 0 {
+			fulldata.Sys = append(fulldata.Sys, eventDataSys{})
+		}
+		// Add all topics and subscribed topics to fulldata
+		for _, topic := range topics {
+			// Topics
+			t := eventDataSysList{
+				Name: topic.Name,
+				Type: string(topic.Type),
+			}
+			fulldata.Sys[0].Type = "topics"
+			fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
+		}
+	
+		// Add all subscribed topics to fulldata
+		for _, topic := range subtopics {
+			t := eventDataSysList{
+				Name: topic.Name,
+			}
+	
+			// Subscribed
+			fulldata.Sys[1].Type = "subscribed"
+			fulldata.Sys[1].List = append(fulldata.Sys[1].List, t)
+		}
+
+		jsonData, err := json.Marshal(fulldata)
+		if err != nil {
+			return "", err
+		}
+
+		return string(jsonData), nil
 }
