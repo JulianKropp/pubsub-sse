@@ -232,18 +232,23 @@ func (c *client) Pub(to string, message interface{}) error {
 }
 
 type eventData struct {
-    Topics struct {
-        List []struct {
-            Name string `json:"name"`
-            Type string `json:"type"`
-        } `json:"list"`
-        Subscribed  []string `json:"subscribed"`
-        Unsubsribed []string `json:"unsubsribed"`
-    } `json:"topics"`
-    Updates []struct {
-		Topic string      `json:"topic"`
-		Data  interface{} `json:"data"`
-	} `json:"updates"`
+	Sys []eventDataSys `json:"sys"`
+	Updates []eventDataUpdates `json:"updates"`
+}
+
+type eventDataSys struct {
+	Type string `json:"type"`
+	List []eventDataSysList `json:"list,omitempty"`
+}
+
+type eventDataSysList struct {
+	Name string `json:"name"`
+	Type string `json:"type,omitempty"`	// topics, subscribed, unsubscribed
+}
+
+type eventDataUpdates struct {
+	Topic string      `json:"topic"`
+	Data  interface{} `json:"data"`
 }
 
 func (c *client) generateUpdateData(to *topic, data interface{}) (string, error) {
@@ -251,33 +256,35 @@ func (c *client) generateUpdateData(to *topic, data interface{}) (string, error)
     topics := c.GetTopics()
 	subtopics := c.GetSubscribedTopics()
 
-	fulldata := &eventData{}
+	fulldata := &eventData{
+		Sys:     []eventDataSys{},
+	}
+	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
+	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
 	// Add all topics and subscribed topics to fulldata
 	for _, topic := range topics {
 		// Topics
-		t := struct {
-			Name string `json:"name"`
-			Type string `json:"type"`
-		}{
+		t := eventDataSysList{
 			Name: topic.Name,
 			Type: string(topic.Type),
 		}
-
-		// Subscribed
-		fulldata.Topics.List = append(fulldata.Topics.List, t)
+		fulldata.Sys[0].Type = "topics"
+		fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
 	}
 
 	// Add all subscribed topics to fulldata
 	for _, topic := range subtopics {
+		t := eventDataSysList{
+			Name: topic.Name,
+		}
+
 		// Subscribed
-		fulldata.Topics.Subscribed = append(fulldata.Topics.Subscribed, topic.Name)
+		fulldata.Sys[1].Type = "subscribed"
+		fulldata.Sys[1].List = append(fulldata.Sys[1].List, t)
 	}
 
 	// Updates
-	u := struct {
-		Topic string      `json:"topic"`
-		Data  interface{} `json:"data"`
-	}{
+	u := eventDataUpdates{
 		Topic: to.Name,
 		Data:  data,
 	}

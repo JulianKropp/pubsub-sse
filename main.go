@@ -11,35 +11,74 @@ import (
 // ssePubSub is Handler which send live data to the client using SSE.
 // The client receves a json string over SSE which looks like this:
 // {
-// 	"sys": [
-// 		{
-// 			"topics": [
-// 				{"name": "topic1", "type": "PUBLIC"},
-// 				{"name": "topic2/test", "type": "PRIVATE"},
-// 				{"name": "topic3/test/test", "type": "PRIVATE"},
-// 				{"name": "topic4/status", "type": "GROUP"},
-// 				{"name": "topic5", "type": "PUBLIC"},
-// 				{"name": "topic10", "type": "PUBLIC"},
-// 				{"name": "topic11/test/test", "type": "PRIVATE"}
-// 			]
-// 		},
-// 		{
-// 			"subscribed": ["topic1", "topic2/test", "topic3/test/test", "topic4/status"]
-// 		},
-// 		{
-// 			"unsubsribed": ["topic5", "topic10", "topic11/test/test"]
-// 		}
+// 	"sys":[
+// 	   {
+// 		  "type":"topics",
+// 		  "list":[
+// 			 {
+// 				"name":"server/status",
+// 				"type":"public"
+// 			 },
+// 			 {
+// 				"name":"test/server",
+// 				"type":"private"
+// 			 },
+// 			 {
+// 				"name":"test/server2",
+// 				"type":"private"
+// 			 }
+// 		  ]
+// 	   },
+// 	   {
+// 		  "type":"subscribed",
+// 		  "list":[
+// 			 {
+// 				"name":"server/status"
+// 			 },
+// 			 {
+// 				"name":"test/server"
+// 			 }
+// 		  ]
+// 	   },
+// 	   {
+// 		  "type":"unsubscribed",
+// 		  "list":[
+// 			 {
+// 				"name":"test5/server"
+// 			 }
+// 		  ]
+// 	   }
 // 	],
-//    "updates":[
-//       {
-//          "topic1":{
-//          }
-//       },
-//       {
-//          "topic2/test":{
-//          }
-//       }
-//    ]
+// 	"updates":[
+// 	   {
+// 		  "topic":"server/status",
+// 		  "data":{
+// 			 "testdata":"testdata"
+// 		  }
+// 	   }
+// 	]
+//  }
+
+// Empty example:
+// {
+// 	"sys":[
+// 	],
+// 	"updates":[
+// 	]
+// }
+
+// Data update example:
+// {
+// 	"sys":[
+// 	],
+// 	"updates":[
+// 	   {
+// 		  "topic":"topic",
+// 		  "data":{
+//			 "testdata":"testdata"
+// 		  }
+// 	   }
+// 	]
 // }
 
 // There are 3 types of topics:
