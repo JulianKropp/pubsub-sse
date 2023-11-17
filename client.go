@@ -8,10 +8,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type status int
+const (
+	Waiting status = iota
+	Receving
+)
+
 // Client represents a subscriber with a channel to send messages.
 type client struct {
 	id     string
 	stream chan string
+	status status
 
 	lock sync.Mutex
 
@@ -36,6 +43,7 @@ func (s *sSEPubSubHandler) NewClient(id string) *client {
 	cl := &client{
 		id:           id,
 		stream:       make(chan string),
+		status:       Waiting,
 
 		lock: sync.Mutex{},
 
@@ -88,7 +96,7 @@ func (s *sSEPubSubHandler) RemoveClient(id string) error {
 }
 
 // Add new private topic
-func (c *client) newPrivateTopic(name string) error {
+func (c *client) NewPrivateTopic(name string) error {
 	// if topic already exists, return error
 	if _, exists := c.privateTopics[name]; exists {
 		return fmt.Errorf("topic %s already exists", name)
@@ -113,7 +121,7 @@ func (c *client) newPrivateTopic(name string) error {
 }
 
 // Remove private topic
-func (c *client) removePrivateTopic(name string) error {
+func (c *client) RemovePrivateTopic(name string) error {
 	// if topic does not exists, return error
 	if _, exists := c.privateTopics[name]; !exists {
 		return fmt.Errorf("topic %s does not exists", name)
@@ -213,6 +221,10 @@ func (c *client) Unsub(name string) error {
 func (c *client) Pub(to string, message interface{}) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	if c.status == Waiting {
+		return fmt.Errorf("client %s is not receving data", c.id)
+	}
 
 	// if topic does not exists, return error
 	t, exists := c.privateTopics[to]

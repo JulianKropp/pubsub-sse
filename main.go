@@ -142,33 +142,40 @@ func main() {
 		log.Println(err)
 	}
 
-	for {
-		time.Sleep(5 * time.Second)
+	// for {
+	// 	time.Sleep(5 * time.Second)
 
-		// Publish a message to all clients
-		data := TestData{
-			Testdata: "testdata",
-		}
-		err = ssePubSub.Pub("server/status", data)
-		if err != nil {
-			log.Println(err)
-		}
-	}
+	// 	// Publish a message to all clients
+	// 	data := TestData{
+	// 		Testdata: "testdata",
+	// 	}
+	// 	err = ssePubSub.Pub("server/status", data)
+	// 	if err != nil {
+	// 		log.Println(err)
+	// 	}
+	// }
 
 	// lastclient := ""
 
-	// clients := ssePubSub.GetClients()
-	// for _, client := range clients {
-	// 	log.Println(client)
-	// 	// Publish a message to a specific client
-	// 	topic := "private/test/topic"
-	// 	data := TestData{
-	// 		Testdata: client.id,
-	// 	}
-	// 	client.Pub(topic, data)
+	clients := ssePubSub.GetClients()
+	for _, client := range clients {
+		log.Println(client)
 
-	// 	lastclient = client.id
-	// }
+		//Create private topic
+		client.NewPrivateTopic("private/test/topic")
+
+		// Subscribe to private topic
+		client.Sub("private/test/topic")
+
+		// Publish a message to a specific client
+		topic := "private/test/topic"
+		data := TestData{
+			Testdata: client.id,
+		}
+		client.Pub(topic, data)
+
+		// lastclient = client.id
+	}
 
 	// client := clients[lastclient]
 	// if client == nil {
@@ -223,4 +230,6 @@ func main() {
 	// for _, topic := range topics {
 	// 	log.Println(topic)
 	// }
+
+	time.Sleep(500 * time.Second)
 }

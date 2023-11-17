@@ -158,6 +158,11 @@ func (s *sSEPubSubHandler) Event(w http.ResponseWriter, r *http.Request) {
 		f.Flush()
 	}
 
+	// Set status to Receving
+	client.lock.Lock()
+	client.status = Receving
+	client.lock.Unlock()
+
 	// Keep the connection open until it's closed by the client
 	for {
         msg := <-client.stream
@@ -186,6 +191,11 @@ func (s *sSEPubSubHandler) Pub(topic string, message interface{}) error {
         if err != nil {
             return err
         }
+
+		if client.status == Waiting {
+			log.Debugf("client %s is not receving data", client.id)
+			continue
+		}
 
 		client.stream <- string(jsonMessage)
 	}

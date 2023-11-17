@@ -46,7 +46,7 @@ func (s *sSEPubSubHandler) NewPublicTopic(name string) error {
 
 // Add new private private topic
 func (s *sSEPubSubHandler) NewPrivateTopic(name string, client *client) error {
-	return client.newPrivateTopic(name)
+	return client.NewPrivateTopic(name)
 }
 
 // Remove public topic
@@ -66,7 +66,7 @@ func (s *sSEPubSubHandler) RemovePublicTopic(name string) error {
 
 // Remove private private topic
 func (s *sSEPubSubHandler) RemovePrivateTopic(name string, client *client) error {
-	return client.removePrivateTopic(name)
+	return client.RemovePrivateTopic(name)
 }
 
 // Remove client from topic
