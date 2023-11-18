@@ -1,448 +1,467 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
 
+	"github.com/apex/log"
 	"github.com/google/uuid"
 )
 
 type status int
+
 const (
 	Waiting status = iota
 	Receving
 )
 
+type OnEventFunc func(string)
+
 // Client represents a subscriber with a channel to send messages.
 type client struct {
 	id     string
-	stream chan string
 	status status
+
+	stream  chan string
+	onEvent OnEventFunc
+
+	stopchan chan struct{}
 
 	lock sync.Mutex
 
-	publicTopics  map[string]*topic
+	sSEPubSubService *sSEPubSubService
+
 	privateTopics map[string]*topic
+
+	groupTopics map[string]*topic
 }
 
-// Adds a new client to the system.
-func (s *sSEPubSubHandler) NewClient(id string) *client {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+// Create a new client
+func newClient(sSEPubSubService *sSEPubSubService) *client {
+	return &client{
+		id:     uuid.New().String(),
+		status: Waiting,
 
-	if id == "" {
-		id = uuid.New().String()
-	}
-
-	// Check if client id already exists
-	if _, exists := s.clients[id]; exists {
-		return s.clients[id]
-	}
-
-	cl := &client{
-		id:           id,
-		stream:       make(chan string),
-		status:       Waiting,
+		stream:  make(chan string),
+		onEvent: nil,
 
 		lock: sync.Mutex{},
 
-		publicTopics: s.publicTopics,
+		stopchan: nil,
+
+		sSEPubSubService: sSEPubSubService,
+
 		privateTopics: make(map[string]*topic),
+
+		groupTopics: make(map[string]*topic),
 	}
-
-	s.clients[id] = cl
-
-	return cl
 }
 
-// Get all clients
-func (s *sSEPubSubHandler) GetClients() map[string]*client {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	return s.clients
-}
-
-// Get client by id
-func (s *sSEPubSubHandler) getClient(id string) (*client, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if _, exists := s.clients[id]; !exists {
-		return nil, fmt.Errorf("client %s does not exists", id)
-	}
-	return s.clients[id], nil
-}
-
-// RemoveClient removes a client from the system.
-func (s *sSEPubSubHandler) RemoveClient(id string) error {
-	// Get client
-	cl, err := s.getClient(id)
-	if err != nil {
-		return err
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// remove client from all private topics
-	for _, topic := range cl.privateTopics {
-		cl.Unsub(topic.Name)
-	}
-
-	// remove client from all public topics
-	for _, topic := range cl.publicTopics {
-		cl.Unsub(topic.Name)
-	}
-
-	delete(s.clients, id)
-
-	return nil
-}
-
-// Add new private topic
-func (c *client) NewPrivateTopic(name string) error {
-	// if topic already exists, return error
-	if _, exists := c.privateTopics[name]; exists {
-		return fmt.Errorf("topic %s already exists", name)
-	}
-
-	top := &topic{
-		Name:    name,
-		Type:    Private,
-		Clients: make(map[string]*client),
-		lock:    sync.Mutex{},
-	}
-
-	// // Add this client to the topic (subscribe)
-	// top.Clients[c.id] = c
-
-	// Add to list of topics
-	c.lock.Lock()
-	c.privateTopics[name] = top
-	c.lock.Unlock()
-
-	// Send new topics to client
-	c.sendNewTopicsList()
-
-	return nil
-}
-
-// Remove private topic
-func (c *client) RemovePrivateTopic(name string) error {
-	// if topic does not exists, return error
-	if _, exists := c.privateTopics[name]; !exists {
-		return fmt.Errorf("topic %s does not exists", name)
-	}
-
+// Stop the client from receiving messages over the event stream
+func (c *client) stop() {
+	// Lock the client
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	// Unsubscribe all clients from this topic
-	c.Unsub(name)
+	// Stop the client
+	c.status = Waiting
 
-	// Remove from list of topics
-	delete(c.privateTopics, name)
-
-	return nil
+	// Close the stream
+	if c.stream != nil {
+		close(c.stream)
+	}
 }
 
-// Get all topics of a client
-func (c *client) GetTopics() map[string]*topic {
+// Get ID
+func (c *client) GetID() string {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	return c.id
+}
+
+// Get Status
+func (c *client) GetStatus() status {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	return c.status
+}
+
+// Get public topics
+func (c *client) GetPublicTopics() map[string]*topic {
+	return c.sSEPubSubService.GetPublicTopics()
+}
+
+// Get public topic by name
+func (c *client) GetPublicTopicByName(name string) (*topic, bool) {
+	return c.sSEPubSubService.GetPublicTopicByName(name)
+}
+
+// Get private topics
+func (c *client) GetPrivateTopics() map[string]*topic {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	// Create a copy of the private topics
+	newmap := make(map[string]*topic)
+	for k, v := range c.privateTopics {
+		newmap[k] = v
+	}
+
+	return newmap
+}
+
+// Get private topic by name
+func (c *client) GetPrivateTopicByName(name string) (*topic, bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	t, ok := c.privateTopics[name]
+	return t, ok
+}
+
+// Get groups
+func (c *client) GetGroups() map[string]*topic {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	// Create a copy of the groups
+	newmap := make(map[string]*topic)
+	for k, v := range c.groupTopics {
+		newmap[k] = v
+	}
+
+	return newmap
+}
+
+// Get all topics
+func (c *client) GetAllTopics() map[string]*topic {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	newmap := make(map[string]*topic)
+	for k, v := range c.GetPublicTopics() {
+		newmap[k] = v
+	}
+	for k, v := range c.groupTopics {
+		newmap[k] = v
+	}
+	for k, v := range c.privateTopics {
+		newmap[k] = v
+	}
+	return newmap
+}
+
+// Get topic by name
+func (c *client) GetTopicByName(name string) (*topic, bool) {
+	topics := c.GetAllTopics()
+
+	t, ok := topics[name]
+	return t, ok
+}
+
+// Get subscribed topics
+func (c *client) GetSubscribedTopics() map[string]*topic {
 	topics := make(map[string]*topic)
-	for _, topic := range c.publicTopics {
-		topics[topic.Name] = topic
+	for k, v := range c.GetAllTopics() {
+		if v.IsSubscribed(c) {
+			topics[k] = v
+		}
 	}
-	for _, topic := range c.privateTopics {
-		topics[topic.Name] = topic
-	}
-
 	return topics
 }
 
-// Get all subscribed topics of a client
-func (c *client) GetSubscribedTopics() map[string]*topic {
-	topics := c.GetTopics()
+// New private topic
+// 0. Check if topic already exists, return it if it does
+// 1. Create a new private topic
+// 2. Add the topic to the client
+// 3. Inform the client about the new topic
+func (c *client) NewPrivateTopic(name string) *topic {
+	// if topic exists, return it
+	if t, ok := c.GetPrivateTopicByName(name); ok {
+		return t
+	}
+
+	t := newTopic(name, Private)
+
+	c.lock.Lock()
+	c.privateTopics[t.GetName()] = t
+	c.lock.Unlock()
+
+	// Inform the client about the new topic
+	if err := c.sendTopicList(); err != nil {
+		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+	}
+
+	return t
+}
+
+// Remove private topic
+// 1. Unsubscribe from the topic
+// 2. Remove the topic from the client
+// 3. Inform the client about the removed topic by sending the new topic list
+func (c *client) RemovePrivateTopic(t *topic) {
+	// Remove this topic from all clients
+	for _, c := range t.GetClients() {
+		c.Unsub(t) // Try to unsubscribe from the topic
+	}
+
+	// Remove topic from client
+	c.lock.Lock()
+	delete(c.privateTopics, t.id)
+	c.lock.Unlock()
+
+	// Inform the client about the removed topic by sending the new topic list
+	if err := c.sendTopicList(); err != nil {
+		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+	}
+}
+
+// Subscribe to a topic
+// 1. If client can subscribe to this topic, add client to topic and return nil
+// 2. Inform the client about the new topic by sending this topic as subscribed
+func (c *client) Sub(topic *topic) error {
+	// if topic exists, add client to topic and return nil
+	if t, ok := c.GetTopicByName(topic.GetName()); ok {
+		if topic == t {
+			t.addClient(c)
+
+			// Inform the client about the new topic by sending this topic as subscribed
+			if err := c.sendSubscribedTopic(t); err != nil {
+				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not subscribe to it", c.GetID(), topic.GetName())
+}
+
+// Unsubscribe from a topic
+// 1. If client is subscribed to this topic, remove client from topic and return nil
+// 2. Inform the client about the new topic by sending this topic as unsubscribed
+func (c *client) Unsub(topic *topic) error {
+	// if topic exists and client is subscribed to it, remove client from topic and return nil
+	if t, ok := c.GetTopicByName(topic.GetName()); ok {
+		if topic == t {
+			if !t.IsSubscribed(c) {
+				return fmt.Errorf("[C:%s]: client is not subscribed to topic %s", c.GetID(), topic.GetName())
+			}
+			t.removeClient(c)
+
+			// Inform the client about the new topic by sending this topic as unsubscribed
+			if err := c.sendUnsubscribedTopic(t); err != nil {
+				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not unsubscribe from it", c.GetID(), topic.GetName())
+}
+
+// send a message to the client
+// 1. Marshal the data
+// 2. Put the data into the stream to send it to the client
+func (c *client) send(msg interface{}) error {
+	// Marshal the data
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	// Send the data
+	if c.GetStatus() == Receving {
+		c.lock.Lock()
+		c.stream <- string(jsonData)
+		c.lock.Unlock()
+	} else {
+		return fmt.Errorf("[C:%s]: client is not receiving", c.id)
+	}
+
+	return nil
+}
+
+// sendTopicList sends a message to the client to inform it about the topics
+func (c *client) sendTopicList() error {
+	// Get all topics
+	topics := c.GetAllTopics()
+
+	// Build the JSON data
+	fulldata := &eventData{
+		Sys: []eventDataSys{
+			{
+				Type: "topics",
+				List: []eventDataSysList{},
+			},
+		},
+	}
+
+	// Append topics data
+	for _, topic := range topics {
+		t := eventDataSysList{
+			Name: topic.GetName(),
+			Type: topic.GetType(),
+		}
+
+		fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
+	}
+
+	// Send the JSON data to the client
+	if err := c.send(fulldata); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// sendSubscribedTopic sends a message to the client to inform it about the subscribed topic
+func (c *client) sendSubscribedTopic(topic *topic) error {
+	// Build the JSON data
+	fulldata := &eventData{
+		Sys: []eventDataSys{
+			{
+				Type: "subscribed",
+				List: []eventDataSysList{
+					{
+						Name: topic.GetName(),
+					},
+				},
+			},
+		},
+	}
+
+	// Send the JSON data to the client
+	if err := c.send(fulldata); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// sendUnsubscribedTopic sends a message to the client to inform it about the unsubscribed topic
+func (c *client) sendUnsubscribedTopic(topic *topic) error {
+	// Build the JSON data
+	fulldata := &eventData{
+		Sys: []eventDataSys{
+			{
+				Type: "unsubscribed",
+				List: []eventDataSysList{
+					{
+						Name: topic.GetName(),
+					},
+				},
+			},
+		},
+	}
+
+	// Send the JSON data to the client
+	if err := c.send(fulldata); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SendInitMSG generates the initial message to send to the client
+// It contains all topics and subscribed topics
+func (c *client) SendInitMSG() error {
+	// Get all topics and subscribed topics
+	topics := c.GetAllTopics()
+	subtopics := c.GetSubscribedTopics()
+
+	// Build the JSON data
+	fulldata := &eventData{
+		Sys: make([]eventDataSys, 0, 2),
+	}
+
+	// Append topics data
+	if len(topics) > 0 {
+		topicData := eventDataSys{Type: "topics"}
+		for _, topic := range topics {
+			topicData.List = append(topicData.List, eventDataSysList{
+				Name: topic.GetName(),
+				Type: topic.GetType(),
+			})
+		}
+		fulldata.Sys = append(fulldata.Sys, topicData)
+	}
+
+	// Append subscribed topics data
+	if len(subtopics) > 0 {
+		subTopicData := eventDataSys{Type: "subscribed"}
+		for _, topic := range subtopics {
+			subTopicData.List = append(subTopicData.List, eventDataSysList{Name: topic.GetName()})
+		}
+		fulldata.Sys = append(fulldata.Sys, subTopicData)
+	}
+
+	// Send JSON data to the client
+	return c.send(fulldata)
+}
+
+// OnEvent sets the OnEvent function
+// This function will be called when a new message needs to be send to the client
+func (c *client) OnEvent(f OnEventFunc) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-
-	subs := make(map[string]*topic)
-	for _, topic := range topics {
-		if _, exists := topic.Clients[c.id]; exists {
-			subs[topic.Name] = topic
-		}
-	}
-	return subs
+	c.onEvent = f
 }
 
-// Subscribe to topic
-func (c *client) Sub(name string) error {
+// RemoveOnEvent removes the OnEvent function
+func (c *client) RemoveOnEvent() {
 	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.onEvent = nil
+}
 
-	// if topic does not exists, return error
-	var topic *topic = nil
-	// First search in private topics
-	// Second search in groups topics
-	// Third search in publicprivate topics
-	if _, exists := c.privateTopics[name]; exists {
-		topic = c.privateTopics[name]
-	} else if _, exists := c.publicTopics[name]; exists {
-		topic = c.publicTopics[name]
-	} else {
-		c.lock.Unlock()
-		return fmt.Errorf("topic %s does not exists", name)
+// Start the client
+// 0. Check if client is already receiving
+// 1. Set status to Receving and create stop channel
+// 2. Send init message to client
+// 3. Keep the connection open
+// 4. Send message to client if new data is published over the stream
+// 5. Stop the client if the stop channel is closed
+func (c *client) Start(ctx context.Context) {
+	// Set status to Receving and create stop channel
+	if c.GetStatus() == Receving {
+		return
 	}
 
-	// Add this client to the topic
-	topic.lock.Lock()
-	topic.Clients[c.id] = c
-	topic.lock.Unlock()
-
+	// Set status to Receving and create stop channel
+	c.lock.Lock()
+	c.stopchan = make(chan struct{})
+	c.status = Receving
 	c.lock.Unlock()
 
-	// Send new subscribed topics to client
-	c.sendNewSubscribedTopic(topic)
-
-	return nil
-}
-
-// Unsubscribe from topic
-func (c *client) Unsub(name string) error {
-	c.lock.Lock()
-
-	// if topic does not exists, return error
-	var topic *topic = nil
-	// First search in private topics
-	// Second search in groups topics
-	// Third search in public topics
-	if _, exists := c.privateTopics[name]; exists {
-		topic = c.privateTopics[name]
-	} else if _, exists := c.publicTopics[name]; exists {
-		topic = c.publicTopics[name]
-	} else {
-		c.lock.Unlock()
-		return fmt.Errorf("topic %s does not exists", name)
-	}
-
-	// if client is not subscribed to topic, return error
-	if _, exists := topic.Clients[c.id]; !exists {
-		c.lock.Unlock()
-		return fmt.Errorf("client %s is not subscribed to topic %s", c.id, name)
-	}
-
-	// Remove this client from the topic
-	delete(topic.Clients, c.id)
-
-	c.lock.Unlock()
-
-	// Inform client about unsubscribed topic
-	c.sendUnsubscribedTopic(topic)
-
-	return nil
-}
-
-// Publish a message
-func (c *client) Pub(to string, message interface{}) error {
-	if c.status == Waiting {
-		return fmt.Errorf("client %s is not receving data", c.id)
-	}
-
-	// if topic does not exists, return error
-	c.lock.Lock()
-	t, exists := c.privateTopics[to]
-	if !exists {
-		c.lock.Unlock()
-		return fmt.Errorf("topic %s does not exists", to)
-	}
-	c.lock.Unlock()
-
-	// Convert message to json
-	err := c.sendUpdate(t, message)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type eventData struct {
-	Sys []eventDataSys `json:"sys"`
-	Updates []eventDataUpdates `json:"updates"`
-}
-
-type eventDataSys struct {
-	Type string `json:"type"`
-	List []eventDataSysList `json:"list,omitempty"`
-}
-
-type eventDataSysList struct {
-	Name string `json:"name"`
-	Type string `json:"type,omitempty"`	// topics, subscribed, unsubscribed
-}
-
-type eventDataUpdates struct {
-	Topic string      `json:"topic"`
-	Data  interface{} `json:"data"`
-}
-
-func (c *client) sendUpdate(to *topic, data interface{}) error {
-	fulldata := &eventData{
-		Updates: []eventDataUpdates{},
-	}
-
-	// Updates
-	u := eventDataUpdates{
-		Topic: to.Name,
-		Data:  data,
-	}
-	fulldata.Updates = append(fulldata.Updates, u)
-
-	jsonData, err := json.Marshal(fulldata)
-	if err != nil {
-		return err
-	}
-
-	c.lock.Lock()
-	if c.status == Receving {
-		c.stream <- string(jsonData)
-	}
-	c.lock.Unlock()
-
-	return nil
-}
-
-func (c *client) generateInit() (string, error) {
-	    // Get all topics of a client
-		topics := c.GetTopics()
-		subtopics := c.GetSubscribedTopics()
-	
-		fulldata := &eventData{
-			Sys:     []eventDataSys{},
+	go func() {
+		if err := c.SendInitMSG(); err != nil {
+			log.Errorf("[C:%s]: Error sending init message to client: %s", c.GetID(), err)
 		}
-		if len(topics) > 0 {
-			fulldata.Sys = append(fulldata.Sys, eventDataSys{})
-		}
-		if len(subtopics) > 0 {
-			fulldata.Sys = append(fulldata.Sys, eventDataSys{})
-		}
-		// Add all topics and subscribed topics to fulldata
-		for _, topic := range topics {
-			// Topics
-			t := eventDataSysList{
-				Name: topic.Name,
-				Type: string(topic.Type),
+	}()
+
+	// Keep the connection open until it's closed by the client
+	for {
+		select {
+		case msg := <-c.stream:
+			log.Infof("[C:%s] Sending message to client: %s", c.GetID(), msg)
+			if c.onEvent == nil {
+				log.Warnf("[C:%s] Client has no OnEvent function", c.GetID())
+				continue
 			}
-			fulldata.Sys[0].Type = "topics"
-			fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
-		}
-	
-		// Add all subscribed topics to fulldata
-		for _, topic := range subtopics {
-			t := eventDataSysList{
-				Name: topic.Name,
-			}
-	
-			// Subscribed
-			fulldata.Sys[1].Type = "subscribed"
-			fulldata.Sys[1].List = append(fulldata.Sys[1].List, t)
-		}
-
-		jsonData, err := json.Marshal(fulldata)
-		if err != nil {
-			return "", err
-		}
-
-		return string(jsonData), nil
-}
-
-func (c *client) sendNewTopicsList() error {
-	topics := c.GetTopics()
-
-	fulldata := &eventData{
-		Sys:     []eventDataSys{},
-	}
-	if len(topics) > 0 {
-		fulldata.Sys = append(fulldata.Sys, eventDataSys{})
-
-		// Add all topics and subscribed topics to fulldata
-		for _, topic := range topics {
-			// Topics
-			t := eventDataSysList{
-				Name: topic.Name,
-				Type: string(topic.Type),
-			}
-			fulldata.Sys[0].Type = "topics"
-			fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
+			c.onEvent(msg)
+		case <-ctx.Done():
+			log.Infof("[C:%s] Client stopped receiving", c.GetID())
+			c.stop()
+			return
+		case <-c.stopchan:
+			log.Infof("[C:%s] Client stopped receiving", c.GetID())
+			return
 		}
 	}
-
-	jsonData, err := json.Marshal(fulldata)
-	if err != nil {
-		return err
-	}
-
-	c.lock.Lock()
-	if c.status == Receving {
-		c.stream <- string(jsonData)
-	}
-	c.lock.Unlock()
-
-	return nil
-}
-
-func (c *client) sendNewSubscribedTopic(top *topic) error {
-	fulldata := &eventData{
-		Sys:     []eventDataSys{},
-	}
-	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
-
-	// Subscribed
-	t := eventDataSysList{
-		Name: top.Name,
-	}
-	fulldata.Sys[0].Type = "subscribed"
-	fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
-
-	jsonData, err := json.Marshal(fulldata)
-	if err != nil {
-		return err
-	}
-
-	c.lock.Lock()
-	if c.status == Receving {
-		c.stream <- string(jsonData)
-	}
-	c.lock.Unlock()
-
-	return nil
-}
-
-func (c *client)sendUnsubscribedTopic(top *topic) error {
-	fulldata := &eventData{
-		Sys:     []eventDataSys{},
-	}
-	fulldata.Sys = append(fulldata.Sys, eventDataSys{})
-
-	// Subscribed
-	t := eventDataSysList{
-		Name: top.Name,
-	}
-	fulldata.Sys[0].Type = "unsubscribed"
-	fulldata.Sys[0].List = append(fulldata.Sys[0].List, t)
-
-	jsonData, err := json.Marshal(fulldata)
-	if err != nil {
-		return err
-	}
-
-	c.lock.Lock()
-	if c.status == Receving {
-		c.stream <- string(jsonData)
-	}
-	c.lock.Unlock()
-
-	return nil
 }

@@ -1,4 +1,4 @@
-module pubsubsse
+module github.com/bigbluebutton-bot/pubsub-sse
 
 go 1.20
 

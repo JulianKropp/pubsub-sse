@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 )
-
 
 // Explanation of the code:
 // ssePubSub is Handler which send live data to the client using SSE.
@@ -102,7 +102,6 @@ import (
 // sys.unsubscribed: Event: List of all public, group and private topics the client is no longer subscribed to
 // updates: List of all public, group and private topics the client is subscribed to and which have been updated with new data
 
-
 // Only changes will be send to the client:
 
 // If a topic is added, the hole sys.list will be send to the client
@@ -116,123 +115,108 @@ import (
 
 // If there is a new update for a topic, only this topic will be send to the client in updates.
 
-
 type TestData struct {
 	Testdata string `json:"testdata"`
 }
 
 func main() {
-	ssePubSub := NewSSEPubSubHandler()
+	// Create a new SSEPubSubService
+	ssePubSub := NewSSEPubSubService()
 
-	http.HandleFunc("/add", ssePubSub.AddClient)      // Add client endpoint
-	http.HandleFunc("/sub", ssePubSub.Subscribe)      // Subscribe endpoint
-	http.HandleFunc("/unsub", ssePubSub.Unsubscribe) // Unsubscribe endpoint
-	http.HandleFunc("/event", ssePubSub.Event)        // SSE endpoint
+	// Handle endpoints
+	// You can write your own endpoints if you want. Just have a look at the examples and modify them to your needs.
+	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { AddClient(ssePubSub, w, r) })                 // Add client endpoint
+	http.HandleFunc("/add/topic/public/", func(w http.ResponseWriter, r *http.Request) { AddPublicTopic(ssePubSub, w, r) })   // Add topic endpoint
+	http.HandleFunc("/add/topic/private/", func(w http.ResponseWriter, r *http.Request) { AddPrivateTopic(ssePubSub, w, r) }) // Add topic endpoint
+	http.HandleFunc("/sub", func(w http.ResponseWriter, r *http.Request) { Subscribe(ssePubSub, w, r) })                      // Subscribe endpoint
+	http.HandleFunc("/unsub", func(w http.ResponseWriter, r *http.Request) { Unsubscribe(ssePubSub, w, r) })                  // Unsubscribe endpoint
+	http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { Event(ssePubSub, w, r) })                        // Event SSE endpoint
 	go func() {
-		log.Fatal(http.ListenAndServe(":8080", nil))
+		log.Fatal(http.ListenAndServe(":8080", nil)) // Start http server
 	}()
 
-	// Create a new client
-	clientID := "client1"
-	ssePubSub.NewClient(clientID)
+	// Create a new client and get it by id
+	client := ssePubSub.NewClient()
+	client, _ = ssePubSub.GetClientByID(client.GetID())
+	fmt.Println("Client ID:", client.GetID())
 
+	// Create a public topic
+	pubTopic := ssePubSub.NewPublicTopic("server/status")
 
-	err := ssePubSub.NewPublicTopic("server/status") // Create a new topic which is public to all clients
-	if err != nil {
-		log.Println(err)
-	}
+	// Get topic by name. 3 ways to get a public topic:
+	pubTopic, _ = ssePubSub.GetPublicTopicByName("server/status")
+	pubTopic, _ = client.GetTopicByName("server/status")
+	pubTopic, _ = client.GetPublicTopicByName("server/status")
 
-	lastclient := ""
+	// Subscribe to the topic
+	client.Sub(pubTopic)
 
-	clients := ssePubSub.GetClients()
-	for _, client := range clients {
-		log.Println(client)
+	// Send data to the topic
+	pubTopic.Pub(TestData{Testdata: "testdata"})
 
-		//Create private topic
-		client.NewPrivateTopic("private/test/topic")
+	// Unsubscribe from topic
+	client.Unsub(pubTopic)
 
-		// Subscribe to private topic
-		client.Sub("private/test/topic")
+	// Remove public topic
+	ssePubSub.RemovePublicTopic(pubTopic)
 
-		// Publish a message to a specific client
-		topic := "private/test/topic"
-		data := TestData{
-			Testdata: client.id,
-		}
-		client.Pub(topic, data)
+	// Create a private topic
+	privTopic := client.NewPrivateTopic("test/server")
 
-		lastclient = client.id
-	}
+	// Get topic by name. 2 ways to get a private topic:
+	privTopic, _ = client.GetTopicByName("test/server")
+	privTopic, _ = client.GetPrivateTopicByName("test/server")
 
-	client := clients[lastclient]
-	if client == nil {
-		panic("client is nil")
-	}
+	// Subscribe to the topic
+	client.Sub(privTopic)
 
-	err = client.NewPrivateTopic("private/private/topic") // Create a new topic which is private to one clients
-	if err != nil {
-		log.Println(err)
-	}
+	// Send data to the topic
+	privTopic.Pub(TestData{Testdata: "testdata"})
 
-	// List all public, private and private private topics of a client
-	topics := client.GetTopics()
-	for _, topic := range topics {
-		log.Println(topic)
-	}
+	// Unsubscribe from topic
+	client.Unsub(privTopic)
 
-	// Subscribe a client to a topic
-	if err := client.Sub("private/private/topic"); err != nil { // Subscribe to topic private and to all sub topics like private/test/topic and private/private/topic, ...
-		log.Println(err)
-	}
+	// Remove private topic
+	client.RemovePrivateTopic(privTopic)
 
-	// Get a list of all topics a client is subscribed to
-	topics = client.GetSubscribedTopics()
-	for _, topic := range topics {
-		log.Println(topic)
-	}
+	// // Create a group
+	// group := ssePubSub.NewGroup("testgroup")
+	// group, _ = ssePubSub.GetGroupByName("testgroup")
 
-	// Unsubscribe a client from a topic
-	if err := client.Unsub("private/private/topic"); err != nil {
-		log.Println(err)
-	}
+	// // Add client to group
+	// group.AddClient(client)
 
-	// Remove a client from the server
-	if err := ssePubSub.RemoveClient(client.id); err != nil {
-		log.Println(err)
-	}
+	// // Get group from client
+	// group, _ = client.GetGroupByName("testgroup")
 
-	// List all public topics
-	topics = ssePubSub.GetTopics()
-	for _, topic := range topics {
-		log.Println(topic)
-	}
+	// // Create a group topic
+	// groupTopic := group.NewTopic("test/group")
 
-	// Remove a public or private topic from the server and unsubscribe all clients from it
-	if err := ssePubSub.RemovePublicTopic("server/status"); err != nil {
-		log.Println(err)
-	}
+	// // Get topic by name. 3 ways to get a group topic:
+	// groupTopic, _ = group.GetTopicByName("test/group")
+	// groupTopic, _ = client.GetTopicByName("test/group")
+	// groupTopic, _ = client.GetGroupTopicByName("test/group")
 
-	// List all public topics
-	topics = ssePubSub.GetTopics()
-	for _, topic := range topics {
-		log.Println(topic)
-	}
+	// // Subscribe to the topic
+	// client.Sub(groupTopic)
 
-	err = ssePubSub.NewPublicTopic("server/status") // Create a new topic which is public to all clients
-	if err != nil {
-		log.Println(err)
-	}
+	// // Send data to the topic
+	// groupTopic.Pub(TestData{Testdata: "testdata"})
 
-	for {
-		time.Sleep(5 * time.Second)
+	// // Unsubscribe from topic
+	// client.Unsub(groupTopic)
 
-		// Publish a message to all clients
-		data := TestData{
-			Testdata: "testdata",
-		}
-		err = ssePubSub.Pub("server/status", data)
-		if err != nil {
-			log.Println(err)
-		}
-	}
+	// // Remove group topic
+	// group.RemoveTopic(groupTopic)
+
+	// // Remove client from group
+	// group.RemoveClient(client)
+
+	// // Remove group
+	// client.RemoveGroup(group)
+
+	// Remove client
+	ssePubSub.RemoveClient(client)
+
+	time.Sleep(500 * time.Second)
 }
