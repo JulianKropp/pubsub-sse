@@ -1,4 +1,7 @@
 # PubSub-SSE
+
+![](./img/PubSub-SSE-round.png)
+
 ## Overview
 
 PubSub-SSE is a Go-based server-sent events (SSE) publication and subscription service. It provides real-time data streaming from a server to connected clients using HTTP. This service is particularly useful for applications that require live data updates, such as dashboards, live feeds, or any real-time monitoring system.
