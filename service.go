@@ -45,7 +45,7 @@ func (s *sSEPubSubService) RemoveClient(c *client) {
 	alltopics := c.GetAllTopics()
 	for _, t := range alltopics {
 		if err := c.Unsub(t); err != nil {
-			log.Debugf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetName(), err)
+			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetName(), err)
 		}
 	}
 
@@ -130,7 +130,7 @@ func (s *sSEPubSubService) RemovePublicTopic(t *topic) {
 	// Remove this topic from all clients
 	for _, c := range t.GetClients() {
 		if err := c.Unsub(t); err != nil {
-			log.Debugf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetName(), err)
+			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetName(), err)
 		}
 	}
 

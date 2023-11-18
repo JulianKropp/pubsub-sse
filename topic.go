@@ -133,7 +133,7 @@ func (t *topic) Pub(msg interface{}) error {
 	for _, c := range t.GetClients() {
 		err := c.send(fulldata) // ignore error. Fire and forget.
 		if err != nil {
-			log.Debugf("[T:%s]: Error sending data to client %s", t.GetName(), c.GetID())
+			log.Errorf("[T:%s]: Error sending data to client: %s", t.GetName(), err.Error())
 		}
 	}
 
