@@ -368,9 +368,9 @@ func (c *client) sendUnsubscribedTopic(topic *topic) error {
 	return nil
 }
 
-// SendInitMSG generates the initial message to send to the client
+// sendInitMSG generates the initial message to send to the client
 // It contains all topics and subscribed topics
-func (c *client) SendInitMSG() error {
+func (c *client) sendInitMSG() error {
 	// Get all topics and subscribed topics
 	topics := c.GetAllTopics()
 	subtopics := c.GetSubscribedTopics()
@@ -440,7 +440,7 @@ func (c *client) Start(ctx context.Context) {
 	c.lock.Unlock()
 
 	go func() {
-		if err := c.SendInitMSG(); err != nil {
+		if err := c.sendInitMSG(); err != nil {
 			log.Errorf("[C:%s]: Error sending init message to client: %s", c.GetID(), err)
 		}
 	}()
