@@ -9,9 +9,6 @@ fontsOrginal = 'fonts-orginal.css'
 # New font list file
 fonts = 'fonts.css'
 
-# Get the name of the current folder
-thisFolder = os.path.dirname(os.path.abspath(__file__)).replace('\\', '/').split('/')[-1]
-
 # Function to download a font from a URL and return the local path
 def download_font(url, folder='fonts'):
     if not os.path.exists(folder):
@@ -26,7 +23,7 @@ def download_font(url, folder='fonts'):
         with open(path, 'wb') as f:
             f.write(response.content)
         print(f"Downloaded: {file_name}")
-        return os.path.join(thisFolder, folder, file_name)
+        return os.path.join(folder, file_name)
     else:
         print(f"Failed to download {file_name}")
         return None
@@ -40,7 +37,7 @@ urls = re.findall(url_pattern, css_text)
 for url in urls:
     local_path = download_font(url)
     # Replace \ with /
-    local_path = "/" + local_path.replace('\\', '/')
+    local_path = local_path.replace('\\', '/')
     if local_path:
         css_text = css_text.replace(url, local_path)
 
