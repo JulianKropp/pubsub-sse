@@ -153,8 +153,15 @@ func main() {
 ### Code structure
 ```plantuml
 @startuml
-package pubsub-sse {
+package pubsubsse{
+class status {
 
+
+}
+class OnEventFunc {
+
+
+}
 class client {
 -id: string
 -status: status
@@ -164,7 +171,7 @@ class client {
 -lock: Mutex
 -sSEPubSubService: *sSEPubSubService
 -privateTopics: map[string]*topic
--groupTopics: map[string]*topic
+-groups: map[string]*group
 -stop()
 +GetID(): string
 +GetStatus(): status
@@ -172,7 +179,10 @@ class client {
 +GetPublicTopicByName(name string): *topic, bool
 +GetPrivateTopics(): map[string]*topic
 +GetPrivateTopicByName(name string): *topic, bool
-+GetGroups(): map[string]*topic
+-addGroup(g *group)
+-removeGroup(g *group)
++GetGroups(): map[string]*group
++GetGroupByName(name string): *group, bool
 +GetAllTopics(): map[string]*topic
 +GetTopicByName(name string): *topic, bool
 +GetSubscribedTopics(): map[string]*topic
@@ -189,26 +199,44 @@ class client {
 +RemoveOnEvent()
 +Start(ctx Context)
 }
-class status {
-
-
-}
-class OnEventFunc {
-
-
+class group {
+-name: string
+-id: string
+-lock: *Mutex
+-topics: map[string]*topic
+-clients: map[string]*client
++GetName(): string
++GetID(): string
++GetTopics(): map[string]*topic
++GetTopicByName(name string): *topic, bool
++GetClients(): map[string]*client
++GetClientByID(id string): *client, bool
++NewTopic(name string): *topic
++RemoveTopic(t *topic)
++AddClient(c *client)
++RemoveClient(c *client)
 }
 class sSEPubSubService {
 -clients: map[string]*client
 -publicTopics: map[string]*topic
+-groups: map[string]*group
 -lock: Mutex
 +NewClient(): *client
 +RemoveClient(c *client)
++NewGroup(name string): *group
++RemoveGroup(g *group)
++GetGroups(): map[string]*group
++GetGroupByName(name string): *group, bool
 +GetClients(): map[string]*client
 +GetClientByID(id string): *client, bool
 +NewPublicTopic(name string): *topic
 +RemovePublicTopic(t *topic)
 +GetPublicTopics(): map[string]*topic
 +GetPublicTopicByName(name string): *topic, bool
+}
+class topicType {
+
+
 }
 class topic {
 -name: string
@@ -225,20 +253,6 @@ class topic {
 +IsSubscribed(c *client): bool
 +Pub(msg interface): error
 }
-class eventDataSys {
-+Type: string
-+List: []eventDataSysList
-
-}
-class eventDataSysList {
-+Name: string
-+Type: string
-
-}
-class topicType {
-
-
-}
 class eventData {
 +Sys: []eventDataSys
 +Updates: []eventDataUpdates
@@ -247,6 +261,16 @@ class eventData {
 class eventDataUpdates {
 +Topic: string
 +Data: interface
+
+}
+class eventDataSys {
++Type: string
++List: []eventDataSysList
+
+}
+class eventDataSysList {
++Name: string
++Type: string
 
 }
 }
@@ -262,6 +286,10 @@ class eventDataUpdates {
 "eventDataUpdates" --> "topic"
 "eventData" --> "eventDataSys"
 "eventData" --> "eventDataUpdates"
+"client" --> "group" : groups
+"group" --> "topic" : topics
+"group" --> "client" : clients
+"sSEPubSubService" --> "group" : groups
 
 @enduml
 ```
