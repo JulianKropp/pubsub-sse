@@ -35,7 +35,7 @@ type client struct {
 
 	privateTopics map[string]*topic
 
-	groupTopics map[string]*topic
+	groups map[string]*group
 }
 
 // Create a new client
@@ -55,7 +55,7 @@ func newClient(sSEPubSubService *sSEPubSubService) *client {
 
 		privateTopics: make(map[string]*topic),
 
-		groupTopics: make(map[string]*topic),
+		groups: make(map[string]*group),
 	}
 }
 
@@ -123,18 +123,43 @@ func (c *client) GetPrivateTopicByName(name string) (*topic, bool) {
 	return t, ok
 }
 
+// Add group
+func (c *client) addGroup(g *group) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.groups[g.GetName()] = g
+}
+
+// Remove group
+func (c *client) removeGroup(g *group) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	delete(c.groups, g.GetName())
+}
+
 // Get groups
-func (c *client) GetGroups() map[string]*topic {
+func (c *client) GetGroups() map[string]*group {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	// Create a copy of the groups
-	newmap := make(map[string]*topic)
-	for k, v := range c.groupTopics {
+	newmap := make(map[string]*group)
+	for k, v := range c.groups {
 		newmap[k] = v
 	}
 
 	return newmap
+}
+
+// Get group by name
+func (c *client) GetGroupByName(name string) (*group, bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	g, ok := c.groups[name]
+	return g, ok
 }
 
 // Get all topics
@@ -146,8 +171,10 @@ func (c *client) GetAllTopics() map[string]*topic {
 	for k, v := range c.GetPublicTopics() {
 		newmap[k] = v
 	}
-	for k, v := range c.groupTopics {
-		newmap[k] = v
+	for _, v := range c.groups {
+		for k, v := range v.GetTopics() {
+			newmap[k] = v
+		}
 	}
 	for k, v := range c.privateTopics {
 		newmap[k] = v

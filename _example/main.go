@@ -68,41 +68,40 @@ func main() {
 	// Remove private topic
 	client.RemovePrivateTopic(privTopic)
 
-	// // Create a group
-	// group := ssePubSub.NewGroup("testgroup")
-	// group, _ = ssePubSub.GetGroupByName("testgroup")
+	// Create a group
+	group := ssePubSub.NewGroup("testgroup")
+	group, _ = ssePubSub.GetGroupByName("testgroup")
 
-	// // Add client to group
-	// group.AddClient(client)
+	// Add client to group
+	group.AddClient(client)
 
-	// // Get group from client
-	// group, _ = client.GetGroupByName("testgroup")
+	// Get group from client
+	group, _ = client.GetGroupByName("testgroup")
 
-	// // Create a group topic
-	// groupTopic := group.NewTopic("test/group")
+	// Create a group topic
+	groupTopic := group.NewTopic("test/group")
 
-	// // Get topic by name. 3 ways to get a group topic:
-	// groupTopic, _ = group.GetTopicByName("test/group")
-	// groupTopic, _ = client.GetTopicByName("test/group")
-	// groupTopic, _ = client.GetGroupTopicByName("test/group")
+	// Get topic by name. 2 ways to get a group topic:
+	groupTopic, _ = group.GetTopicByName("test/group")
+	groupTopic, _ = client.GetTopicByName("test/group")
 
-	// // Subscribe to the topic
-	// client.Sub(groupTopic)
+	// Subscribe to the topic
+	client.Sub(groupTopic)
 
-	// // Send data to the topic
-	// groupTopic.Pub(TestData{Testdata: "testdata"})
+	// Send data to the topic
+	groupTopic.Pub(TestData{Testdata: "testdata"})
 
-	// // Unsubscribe from topic
-	// client.Unsub(groupTopic)
+	// Unsubscribe from topic
+	client.Unsub(groupTopic)
 
-	// // Remove group topic
-	// group.RemoveTopic(groupTopic)
+	// Remove group topic
+	group.RemoveTopic(groupTopic)
 
-	// // Remove client from group
-	// group.RemoveClient(client)
+	// Remove client from group
+	group.RemoveClient(client)
 
-	// // Remove group
-	// client.RemoveGroup(group)
+	// Remove group
+	ssePubSub.RemoveGroup(group)
 
 	// Remove client
 	ssePubSub.RemoveClient(client)
