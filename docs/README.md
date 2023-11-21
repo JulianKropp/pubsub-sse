@@ -283,7 +283,6 @@ class eventDataSysList {
 "topic" --> "topicType"
 "topic" --> "client"
 "eventDataSys" --> "eventDataSysList"
-"eventDataUpdates" --> "topic"
 "eventData" --> "eventDataSys"
 "eventData" --> "eventDataUpdates"
 "client" --> "group" : groups
