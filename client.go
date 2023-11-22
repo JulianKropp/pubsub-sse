@@ -227,10 +227,17 @@ func (c *client) NewPrivateTopic(name string) *topic {
 }
 
 // Remove private topic
+// 0. Check if topic exists, return error if it does not
 // 1. Unsubscribe from the topic
 // 2. Remove the topic from the client
 // 3. Inform the client about the removed topic by sending the new topic list
 func (c *client) RemovePrivateTopic(t *topic) {
+	// if topic does not exist, return
+	if _, ok := c.GetPrivateTopicByName(t.GetName()); !ok {
+		log.Errorf("[C:%s]: topic %s does not exist", c.GetID(), t.GetName())
+		return
+	}
+
 	// Remove this topic from all clients
 	for _, c := range t.GetClients() {
 		c.Unsub(t) // Try to unsubscribe from the topic
