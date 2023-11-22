@@ -310,10 +310,10 @@ func (c *client) send(msg interface{}) error {
 	}
 
 	// Send the data
-	if c.GetStatus() == Receving {
-		c.lock.Lock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.status == Receving {
 		c.stream <- string(jsonData)
-		c.lock.Unlock()
 	} else {
 		return fmt.Errorf("[C:%s]: client is not receiving", c.id)
 	}
