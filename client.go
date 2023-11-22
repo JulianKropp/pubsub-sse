@@ -461,10 +461,10 @@ func (c *client) RemoveOnEvent() {
 // 3. Keep the connection open
 // 4. Send message to client if new data is published over the stream
 // 5. Stop the client if the stop channel is closed
-func (c *client) Start(ctx context.Context) {
+func (c *client) Start(ctx context.Context) error {
 	// Set status to Receving and create stop channel
 	if c.GetStatus() == Receving {
-		return
+		return fmt.Errorf("[C:%s]: Client is already receiving", c.GetID())
 	}
 
 	// Set status to Receving and create stop channel
@@ -480,6 +480,7 @@ func (c *client) Start(ctx context.Context) {
 	}()
 
 	// Keep the connection open until it's closed by the client
+	loop:
 	for {
 		select {
 		case msg := <-c.stream:
@@ -492,10 +493,11 @@ func (c *client) Start(ctx context.Context) {
 		case <-ctx.Done():
 			log.Infof("[C:%s] Client stopped receiving", c.GetID())
 			c.stop()
-			return
+			break loop
 		case <-c.stopchan:
 			log.Infof("[C:%s] Client stopped receiving", c.GetID())
-			return
+			break loop
 		}
 	}
+	return nil
 }
