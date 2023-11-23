@@ -245,7 +245,7 @@ func (c *client) RemovePrivateTopic(t *topic) {
 
 	// Remove topic from client
 	c.lock.Lock()
-	delete(c.privateTopics, t.id)
+	delete(c.privateTopics, t.GetName())
 	c.lock.Unlock()
 
 	// Inform the client about the removed topic by sending the new topic list
