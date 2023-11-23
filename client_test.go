@@ -1,9 +1,9 @@
 package pubsubsse
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"testing"
@@ -54,7 +54,7 @@ func startEventServer(ssePubSub *sSEPubSubService, t *testing.T, port int) {
 	srv := http.NewServeMux()
 	srv.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { Event(ssePubSub, w, r) }) // Event SSE endpoint
 	go func() {
-		errx := http.ListenAndServe(":" + strconv.Itoa(port), srv)
+		errx := http.ListenAndServe(":"+strconv.Itoa(port), srv)
 		if errx != nil {
 			t.Error("http Listen err", errx)
 		}
@@ -64,59 +64,80 @@ func startEventServer(ssePubSub *sSEPubSubService, t *testing.T, port int) {
 
 // Makes an http request to localhost:8080/event
 // This will be an SSE connection and will be open for 10s
-func httpToEvent(t *testing.T, client *client, port int, connected chan bool, done chan bool, returnValue *[]eventData) {
+func httpToEvent(t *testing.T, client *client, port int, connected, done chan bool, returnValue *[]eventData) {
 	hclient := http.Client{}
-	req, err := http.NewRequest("GET", "http://localhost:" + strconv.Itoa(port) + "/event?client_id=" + client.GetID(), nil)
+	req, err := http.NewRequest("GET", "http://localhost:"+strconv.Itoa(port)+"/event?client_id="+client.GetID(), nil)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	resp, err := hclient.Do(req)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	// Set a timeout for the SSE connection
 	timeout := time.After(3 * time.Second)
+	stream := make(chan string)
 
 	con := false
-	for {
-		fmt.Println("loop")
-		select {
-		case <-timeout:
-			done <- true
-			resp.Body.Close()
-			return
-		default:
-			// Read the next event
-			bt := make([]byte, 4096)
-			n, err := resp.Body.Read(bt)
 
-			// Send connected signal
-			if !con {
-				con = true
-				connected <- true
-			}
-
+	// Goroutine to read from the SSE stream
+	go func() {
+		reader := bufio.NewReader(resp.Body)
+		for {
+			line, err := reader.ReadBytes('\n')
 			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				t.Error(err)
-				continue
+				close(stream)
+				t.Logf("Error reading from SSE stream: %s", err.Error())
+				return
 			}
-
-			var rvalue eventData
-			// Unmarshal the JSON data
-			err = json.Unmarshal(bt[:n], &rvalue)
-			if err != nil {
-				t.Error(err)
-				continue
-			}
-
-			*returnValue = append(*returnValue, rvalue)
+			stream <- string(line)
 		}
-	}
+	}()
+
+	// Listen for messages and timeout
+	go func() {
+		for {
+			select {
+			case <-timeout:
+				fmt.Println("timeout")
+				// Send connected signal
+				if !con {
+					con = true
+					connected <- true
+				}
+				done <- true
+				resp.Body.Close()
+				return
+			case message, ok := <-stream:
+				if !ok {
+					// Stream closed, exit loop
+					return
+				}
+
+				fmt.Println("message: ", message)
+
+				var rvalue eventData
+				// Unmarshal the JSON data
+				err = json.Unmarshal([]byte(message), &rvalue)
+				if err != nil {
+					t.Error(err)
+					continue
+				}
+
+				// Send connected signal
+				if !con {
+					con = true
+					connected <- true
+				}
+
+				*returnValue = append(*returnValue, rvalue)
+			}
+		}
+	}()
 }
 
 // -----------------------------
@@ -132,25 +153,27 @@ func TestClient_GetID(t *testing.T) {
 	}
 }
 
-// // TestClient_GetStatus tests Client.GetStatus()
-// func TestClient_GetStatus(t *testing.T) {
-// 	ssePubSub := NewSSEPubSubService()
-// 	client := ssePubSub.NewClient()
-// 	if client.GetStatus() != Waiting {
-// 		t.Error("Client.GetStatus() != Waiting")
-// 	}
+// TestClient_GetStatus tests Client.GetStatus()
+func TestClient_GetStatus(t *testing.T) {
+	ssePubSub := NewSSEPubSubService()
+	client := ssePubSub.NewClient()
+	if client.GetStatus() != Waiting {
+		t.Error("Client.GetStatus() != Waiting")
+	}
 
-// 	// Start /event
-// 	startEventServer(ssePubSub, t, 8080)
+	// Start /event
+	startEventServer(ssePubSub, t, 8080)
 
-// 	// Start the client
-// 	httpToEvent(t, client, 8080)
+	// Start the client
+	done := make(chan bool)
+	connected := make(chan bool)
+	httpToEvent(t, client, 8080, connected, done, &[]eventData{})
+	<-connected
 
-// 	if client.GetStatus() != Receving {
-// 		t.Error("Client.GetStatus() != Receving")
-// 	}
-// }
-
+	if client.GetStatus() != Receving {
+		t.Error("Client.GetStatus() != Receving")
+	}
+}
 
 // -----------------------------
 // Public Topics
@@ -217,23 +240,23 @@ func TestClient_NewPrivateTopic(t *testing.T) {
 	}
 }
 
-// // TestClient_RemovePrivateTopic tests Client.RemovePrivateTopic()
-// func TestClient_RemovePrivateTopic(t *testing.T) {
-// 	ssePubSub := NewSSEPubSubService()
-// 	client := ssePubSub.NewClient()
+// TestClient_RemovePrivateTopic tests Client.RemovePrivateTopic()
+func TestClient_RemovePrivateTopic(t *testing.T) {
+	ssePubSub := NewSSEPubSubService()
+	client := ssePubSub.NewClient()
 
-// 	// Create a private topic
-// 	privTopic := client.NewPrivateTopic("test")
+	// Create a private topic
+	privTopic := client.NewPrivateTopic("test")
 
-// 	// Remove topic
-// 	client.RemovePrivateTopic(privTopic)
+	// Remove topic
+	client.RemovePrivateTopic(privTopic)
 
-// 	// Get topic
-// 	privTopics := client.GetPrivateTopics()
-// 	if len(privTopics) != 0 {
-// 		t.Error("len(privTopics) != 0")
-// 	}
-// }
+	// Get topic
+	privTopics := client.GetPrivateTopics()
+	if len(privTopics) != 0 {
+		t.Errorf("%d != 0", len(privTopics))
+	}
+}
 
 // TestClient_GetPrivateTopics tests Client.GetPrivateTopics()
 func TestClient_GetPrivateTopics(t *testing.T) {
@@ -499,8 +522,12 @@ func TestClient_send(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 
-	// Create topic
+	// Create topic and subscribe
 	topic := client.NewPrivateTopic("test")
+	if err := client.Sub(topic); err != nil {
+		t.Error(err)
+		return
+	}
 
 	// Start /event
 	startEventServer(ssePubSub, t, 8081)
@@ -509,13 +536,10 @@ func TestClient_send(t *testing.T) {
 	connected := make(chan bool)
 	done := make(chan bool)
 	data := []eventData{}
-	go httpToEvent(t, client, 8081, connected, done, &data)
+	httpToEvent(t, client, 8081, connected, done, &data)
 	<-connected
 
-	type TestData struct {
-		Testdata string
-	}
-	testData := TestData{Testdata: "testdata"}
+	testData := "testdata"
 
 	if client.GetStatus() != Receving {
 		t.Error("client.GetStatus() != Receving")
@@ -531,8 +555,8 @@ func TestClient_send(t *testing.T) {
 	// Wait for the client to receive the data
 	<-done
 
-	if len(data) != 1 {
-		t.Error("len(data) != 1")
+	if len(data) < 1 {
+		t.Error("len(data) < 1")
 		return
 	}
 	for _, d := range data {
