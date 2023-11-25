@@ -25,7 +25,6 @@ type client struct {
 	status status
 
 	stream  chan string
-	onEvent OnEventFunc
 
 	stopchan chan struct{}
 
@@ -44,8 +43,7 @@ func newClient(sSEPubSubService *sSEPubSubService) *client {
 		id:     uuid.New().String(),
 		status: Waiting,
 
-		stream:  make(chan string),
-		onEvent: nil,
+		stream:  make(chan string, 100),
 
 		lock: sync.Mutex{},
 
@@ -64,6 +62,10 @@ func (c *client) stop() {
 	// Lock the client
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	if c.status == Waiting {
+		return
+	}
 
 	// Stop the client
 	c.status = Waiting
@@ -314,7 +316,14 @@ func (c *client) send(msg interface{}) error {
 	defer c.lock.Unlock()
 	if c.status == Receving {
 		data := string(jsonData) + "\n"
-		c.stream <- data
+		select {
+		case c.stream <- data:
+			// successfully sent
+			log.Infof("[C:%s]: push data to stream", c.id)
+		default:
+			// handle the case where the channel is full or the client is not receiving
+			return fmt.Errorf("[C:%s]: stream is full", c.id)
+		}
 	} else {
 		return fmt.Errorf("[C:%s]: client is not receiving", c.id)
 	}
@@ -405,7 +414,7 @@ func (c *client) sendUnsubscribedTopic(topic *topic) error {
 
 // sendInitMSG generates the initial message to send to the client
 // It contains all topics and subscribed topics
-func (c *client) sendInitMSG() error {
+func (c *client) sendInitMSG(onEvent OnEventFunc) error {
 	// Get all topics and subscribed topics
 	topics := c.GetAllTopics()
 	subtopics := c.GetSubscribedTopics()
@@ -436,23 +445,16 @@ func (c *client) sendInitMSG() error {
 		fulldata.Sys = append(fulldata.Sys, subTopicData)
 	}
 
+	// Marshal the data
+	jsonData, err := json.Marshal(fulldata)
+	if err != nil {
+		return err
+	}
+
+	onEvent(string(jsonData) + "\n")
+
 	// Send JSON data to the client
-	return c.send(fulldata)
-}
-
-// OnEvent sets the OnEvent function
-// This function will be called when a new message needs to be send to the client
-func (c *client) OnEvent(f OnEventFunc) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.onEvent = f
-}
-
-// RemoveOnEvent removes the OnEvent function
-func (c *client) RemoveOnEvent() {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.onEvent = nil
+	return err
 }
 
 // Start the client
@@ -462,7 +464,7 @@ func (c *client) RemoveOnEvent() {
 // 3. Keep the connection open
 // 4. Send message to client if new data is published over the stream
 // 5. Stop the client if the stop channel is closed
-func (c *client) Start(ctx context.Context) error {
+func (c *client) Start(ctx context.Context, onEvent OnEventFunc) error {
 	// Set status to Receving and create stop channel
 	if c.GetStatus() == Receving {
 		return fmt.Errorf("[C:%s]: Client is already receiving", c.GetID())
@@ -474,26 +476,29 @@ func (c *client) Start(ctx context.Context) error {
 	c.status = Receving
 	c.lock.Unlock()
 
-	go func() {
-		if err := c.sendInitMSG(); err != nil {
-			log.Errorf("[C:%s]: Error sending init message to client: %s", c.GetID(), err)
-		}
+	// Stop the client at the end
+	defer func() {
+		c.stop()
 	}()
+
+	if err := c.sendInitMSG(onEvent); err != nil {
+		log.Errorf("[C:%s]: Error sending init message to client: %s", c.GetID(), err)
+		return err
+	}
 
 	// Keep the connection open until it's closed by the client
 	loop:
 	for {
 		select {
-		case msg := <-c.stream:
-			log.Infof("[C:%s] Sending message to client: %s", c.GetID(), msg)
-			if c.onEvent == nil {
-				log.Warnf("[C:%s] Client has no OnEvent function", c.GetID())
-				continue
+		case msg, ok := <-c.stream:
+			if !ok {
+				log.Infof("[C:%s] Client stopped receiving", c.GetID())
+				break loop
 			}
-			c.onEvent(msg)
+			log.Infof("[C:%s] Sending message to client: %s", c.GetID(), msg)
+			onEvent(msg)
 		case <-ctx.Done():
 			log.Infof("[C:%s] Client stopped receiving", c.GetID())
-			c.stop()
 			break loop
 		case <-c.stopchan:
 			log.Infof("[C:%s] Client stopped receiving", c.GetID())

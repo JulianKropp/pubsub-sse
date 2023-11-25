@@ -159,17 +159,15 @@ func Event(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
+	// Get the request's context. If the connection closes, the context will be canceled.
+	ctx := r.Context()
+
+	// Keep the connection open until it's closed by the client or client is removed
 	// OnEvent: Send message to client if new data is published
-	client.OnEvent(func(msg string) {
+	client.Start(ctx, func(msg string) {
 		fmt.Fprintf(w, "%s", msg)
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
 		}
 	})
-
-	// Get the request's context. If the connection closes, the context will be canceled.
-	ctx := r.Context()
-
-	// Keep the connection open until it's closed by the client or client is removed
-	client.Start(ctx)
 }
