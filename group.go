@@ -8,34 +8,34 @@ import (
 )
 
 // Group is a collection of topics.
-type group struct {
+type Group struct {
 	// Name is the name of the group.
 	name string
-	id  string
+	id   string
 
 	lock *sync.Mutex
 
 	// Topics is a map of topic names to topics.
-	topics map[string]*topic
+	topics map[string]*Topic
 
 	// Clients is a map of client IDs to clients.
-	clients map[string]*client
+	clients map[string]*Client
 }
 
-func newGroup(name string) *group {
-	return &group{
+func newGroup(name string) *Group {
+	return &Group{
 		name: name,
 		id:   uuid.New().String(),
 
 		lock: &sync.Mutex{},
 
-		topics:  map[string]*topic{},
-		clients: map[string]*client{},
+		topics:  map[string]*Topic{},
+		clients: map[string]*Client{},
 	}
 }
 
 // GetName returns the name of the group.
-func (g *group) GetName() string {
+func (g *Group) GetName() string {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -43,7 +43,7 @@ func (g *group) GetName() string {
 }
 
 // GetID returns the ID of the group.
-func (g *group) GetID() string {
+func (g *Group) GetID() string {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -51,12 +51,12 @@ func (g *group) GetID() string {
 }
 
 // GetTopics returns a map of topics.
-func (g *group) GetTopics() map[string]*topic {
+func (g *Group) GetTopics() map[string]*Topic {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	// Create a copy of the topics map
-	newmap := make(map[string]*topic)
+	newmap := make(map[string]*Topic)
 	for k, v := range g.topics {
 		newmap[k] = v
 	}
@@ -66,7 +66,7 @@ func (g *group) GetTopics() map[string]*topic {
 }
 
 // Get topic by name
-func (g *group) GetTopicByName(name string) (*topic, bool) {
+func (g *Group) GetTopicByName(name string) (*Topic, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -75,12 +75,12 @@ func (g *group) GetTopicByName(name string) (*topic, bool) {
 }
 
 // GetClients returns a map of clients.
-func (g *group) GetClients() map[string]*client {
+func (g *Group) GetClients() map[string]*Client {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	// Create a copy of the clients map
-	newmap := make(map[string]*client)
+	newmap := make(map[string]*Client)
 	for k, v := range g.clients {
 		newmap[k] = v
 	}
@@ -90,7 +90,7 @@ func (g *group) GetClients() map[string]*client {
 }
 
 // Get client by ID
-func (g *group) GetClientByID(id string) (*client, bool) {
+func (g *Group) GetClientByID(id string) (*Client, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -102,14 +102,14 @@ func (g *group) GetClientByID(id string) (*client, bool) {
 // 1. Check if topic already exists, return it if it does
 // 2. Add the topic to the group
 // 3. Inform all clients about the new topic
-func (g *group) NewTopic(name string) *topic {
+func (g *Group) NewTopic(name string) *Topic {
 	// Check if the topic already exists and return it if it does
 	if t, ok := g.GetTopicByName(name); ok {
 		return t
 	}
 
 	// Create the topic
-	t := newTopic(name, Group)
+	t := newTopic(name, TGroup)
 	g.lock.Lock()
 	g.topics[name] = t
 	g.lock.Unlock()
@@ -130,9 +130,9 @@ func (g *group) NewTopic(name string) *topic {
 // 2. Unsuscribe all clients from the topic
 // 3. Remove topic from the group
 // 4. Inform all clients about the removed topic
-func (g *group) RemoveTopic(t *topic) {
+func (g *Group) RemoveTopic(t *Topic) {
 	// Check if topic is a group topic
-	if t.GetType() != string(Group) {
+	if t.GetType() != string(TGroup) {
 		log.Errorf("topic is not a group topic")
 	}
 
@@ -174,7 +174,7 @@ func (g *group) RemoveTopic(t *topic) {
 // 0. Check if client already exists in the group
 // 1. Add client to the group
 // 2. Add group to client
-func (g *group) AddClient(c *client) {
+func (g *Group) AddClient(c *Client) {
 	// Check if client already exists in the group
 	if _, ok := g.GetClientByID(c.GetID()); ok {
 		log.Errorf("Client already exists in group")
@@ -201,7 +201,7 @@ func (g *group) AddClient(c *client) {
 // 2. Remove client from the group
 // 3. Remove group from client
 // 4. Inform client about the removed topic
-func (g *group) RemoveClient(c *client) {
+func (g *Group) RemoveClient(c *Client) {
 	// Check if client exists in the group
 	if _, ok := g.GetClientByID(c.GetID()); !ok {
 		log.Errorf("Client does not exist in group")

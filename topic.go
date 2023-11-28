@@ -11,32 +11,32 @@ import (
 type topicType string
 
 const (
-	Public  topicType = "public"
-	Private topicType = "private"
-	Group   topicType = "group"
+	TPublic  topicType = "public"
+	TPrivate topicType = "private"
+	TGroup   topicType = "group"
 )
 
-// Topic represents a messaging topic in the SSE pub-sub system.
-type topic struct {
+// Topic represents a messaging Topic in the SSE pub-sub system.
+type Topic struct {
 	name    string
 	id      string
 	ttype   topicType
-	clients map[string]*client
+	clients map[string]*Client
 	lock    sync.Mutex
 }
 
 // Create a new topic
-func newTopic(name string, ttype topicType) *topic {
-	return &topic{
+func newTopic(name string, ttype topicType) *Topic {
+	return &Topic{
 		name:    name,
 		id:      uuid.New().String(),
 		ttype:   ttype,
-		clients: make(map[string]*client),
+		clients: make(map[string]*Client),
 	}
 }
 
 // Get Name
-func (t *topic) GetName() string {
+func (t *Topic) GetName() string {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -44,7 +44,7 @@ func (t *topic) GetName() string {
 }
 
 // Get ID
-func (t *topic) GetID() string {
+func (t *Topic) GetID() string {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -52,7 +52,7 @@ func (t *topic) GetID() string {
 }
 
 // Get Type
-func (t *topic) GetType() string {
+func (t *Topic) GetType() string {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -60,7 +60,7 @@ func (t *topic) GetType() string {
 }
 
 // Add a client to the topic
-func (t *topic) addClient(c *client) {
+func (t *Topic) addClient(c *Client) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -68,7 +68,7 @@ func (t *topic) addClient(c *client) {
 }
 
 // Remove a client from the topic
-func (t *topic) removeClient(c *client) {
+func (t *Topic) removeClient(c *Client) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -76,12 +76,12 @@ func (t *topic) removeClient(c *client) {
 }
 
 // Get all clients in the topic
-func (t *topic) GetClients() map[string]*client {
+func (t *Topic) GetClients() map[string]*Client {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	// Create a copy of the map
-	newmap := make(map[string]*client)
+	newmap := make(map[string]*Client)
 	for k, v := range t.clients {
 		newmap[k] = v
 	}
@@ -89,7 +89,7 @@ func (t *topic) GetClients() map[string]*client {
 }
 
 // Check if a client is subscribed to the topic
-func (t *topic) IsSubscribed(c *client) bool {
+func (t *Topic) IsSubscribed(c *Client) bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -118,7 +118,7 @@ type eventDataUpdates struct {
 }
 
 // Publish a message to all clients in the topic
-func (t *topic) Pub(msg interface{}) error {
+func (t *Topic) Pub(msg interface{}) error {
 	// Build the JSON data
 	fulldata := &eventData{
 		Updates: []eventDataUpdates{},

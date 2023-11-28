@@ -4,37 +4,84 @@ import (
 	"sync"
 
 	"github.com/apex/log"
+	"github.com/google/uuid"
 )
 
-// sSEPubSubService represents the SSE publisher and subscriber system.
-type sSEPubSubService struct {
-	clients      map[string]*client
-	publicTopics map[string]*topic
-	groups       map[string]*group
+type funcClient func(*Client)
+
+// SSEPubSubService represents the SSE publisher and subscriber system.
+type SSEPubSubService struct {
+	clients      map[string]*Client
+	publicTopics map[string]*Topic
+	groups       map[string]*Group
 
 	lock sync.Mutex
+
+	// Events:
+	eventsOnNewClient map[string]funcClient
 }
 
 // NewSSEPubSub creates a new sSEPubSubService instance.
-func NewSSEPubSubService() *sSEPubSubService {
-	return &sSEPubSubService{
-		clients:      make(map[string]*client),
-		publicTopics: make(map[string]*topic),
-		groups:       make(map[string]*group),
+func NewSSEPubSubService() *SSEPubSubService {
+	return &SSEPubSubService{
+		clients:      make(map[string]*Client),
+		publicTopics: make(map[string]*Topic),
+		groups:       make(map[string]*Group),
 
 		lock: sync.Mutex{},
+
+		eventsOnNewClient: make(map[string]funcClient),
 	}
 }
 
 // Create new client
-func (s *sSEPubSubService) NewClient() *client {
+func (s *SSEPubSubService) NewClient() *Client {
+	// Lock the sSEPubSubService
+	s.lock.Lock()
+
+	c := newClient(s)
+	s.clients[c.GetID()] = c
+	s.lock.Unlock()
+
+	// Emit event
+	s.emitOnNewClient(c)
+
+	return c
+}
+
+// Event: When client is created
+func (s *SSEPubSubService) OnNewClient(f funcClient) string {
 	// Lock the sSEPubSubService
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	c := newClient(s)
-	s.clients[c.GetID()] = c
-	return c
+	id := uuid.New().String()
+
+	// Add f to eventsOnNewClient map
+	s.eventsOnNewClient[id] = f
+	return id
+}
+
+// Emit Event: When client is created
+func (s *SSEPubSubService) emitOnNewClient(c *Client) {
+	// Lock the sSEPubSubService
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	// Emit event
+	for _, f := range s.eventsOnNewClient {
+		go f(c)
+	}
+}
+
+// Remove Event: When client is created
+func (s *SSEPubSubService) RemoveOnNewClient(id string) {
+	// Lock the sSEPubSubService
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	// Remove f from eventsOnNewClient map
+	delete(s.eventsOnNewClient, id)
 }
 
 // Remove client
@@ -42,7 +89,7 @@ func (s *sSEPubSubService) NewClient() *client {
 // 2. Remove all private topics
 // 3. Stop the client
 // 4. Remove client from sSEPubSubService
-func (s *sSEPubSubService) RemoveClient(c *client) {
+func (s *SSEPubSubService) RemoveClient(c *Client) {
 	// Unsubscribe from all topics
 	alltopics := c.GetAllTopics()
 	for _, t := range alltopics {
@@ -71,7 +118,7 @@ func (s *sSEPubSubService) RemoveClient(c *client) {
 // 0. Check if group already exists, return it if it does
 // 1. Create a new group
 // 2. Add the group to the sSEPubSubService
-func (s *sSEPubSubService) NewGroup(name string) *group {
+func (s *SSEPubSubService) NewGroup(name string) *Group {
 	// Check if group already exists, return it if it does
 	if g, ok := s.GetGroupByName(name); ok {
 		return g
@@ -93,7 +140,7 @@ func (s *sSEPubSubService) NewGroup(name string) *group {
 // 1. Remove all topics from the group
 // 2. Remove all clients from the group
 // 3. Remove group from sSEPubSubService
-func (s *sSEPubSubService) RemoveGroup(g *group) {
+func (s *SSEPubSubService) RemoveGroup(g *Group) {
 	// Check if group exists in sSEPubSubService
 	checkIfExist := func() bool {
 		if group, ok := s.GetGroupByName(g.GetName()); ok {
@@ -125,12 +172,12 @@ func (s *sSEPubSubService) RemoveGroup(g *group) {
 }
 
 // Get groups
-func (s *sSEPubSubService) GetGroups() map[string]*group {
+func (s *SSEPubSubService) GetGroups() map[string]*Group {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	// Create a copy of the map
-	newmap := make(map[string]*group)
+	newmap := make(map[string]*Group)
 	for k, v := range s.groups {
 		newmap[k] = v
 	}
@@ -139,7 +186,7 @@ func (s *sSEPubSubService) GetGroups() map[string]*group {
 }
 
 // Get group by name
-func (s *sSEPubSubService) GetGroupByName(name string) (*group, bool) {
+func (s *SSEPubSubService) GetGroupByName(name string) (*Group, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -148,12 +195,12 @@ func (s *sSEPubSubService) GetGroupByName(name string) (*group, bool) {
 }
 
 // Get clients
-func (s *sSEPubSubService) GetClients() map[string]*client {
+func (s *SSEPubSubService) GetClients() map[string]*Client {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	// Create a copy of the map
-	newmap := make(map[string]*client)
+	newmap := make(map[string]*Client)
 	for k, v := range s.clients {
 		newmap[k] = v
 	}
@@ -162,7 +209,7 @@ func (s *sSEPubSubService) GetClients() map[string]*client {
 }
 
 // Get client by ID
-func (s *sSEPubSubService) GetClientByID(id string) (*client, bool) {
+func (s *SSEPubSubService) GetClientByID(id string) (*Client, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -175,14 +222,14 @@ func (s *sSEPubSubService) GetClientByID(id string) (*client, bool) {
 // 1. Create a new public topic
 // 2. Add the topic to the sSEPubSubService
 // 3. Inform all clients about the new topic
-func (s *sSEPubSubService) NewPublicTopic(name string) *topic {
+func (s *SSEPubSubService) NewPublicTopic(name string) *Topic {
 	// Check if topic already exists, return it if it does
 	if t, ok := s.GetPublicTopicByName(name); ok {
 		return t
 	}
 
 	// Create a new public topic
-	t := newTopic(name, Public)
+	t := newTopic(name, TPublic)
 	s.lock.Lock()
 	s.publicTopics[t.GetName()] = t
 	s.lock.Unlock()
@@ -203,9 +250,9 @@ func (s *sSEPubSubService) NewPublicTopic(name string) *topic {
 // 2. Check if topic exists in sSEPubSubService
 // 3. Remove topic from sSEPubSubService
 // 4. Inform all clients about the removed topic by sending the new topic list
-func (s *sSEPubSubService) RemovePublicTopic(t *topic) {
+func (s *SSEPubSubService) RemovePublicTopic(t *Topic) {
 	// Check if topic is public
-	if t.GetType() != string(Public) {
+	if t.GetType() != string(TPublic) {
 		log.Errorf("Topic %s is not public", t.GetName())
 		return
 	}
@@ -245,12 +292,12 @@ func (s *sSEPubSubService) RemovePublicTopic(t *topic) {
 }
 
 // Get public topics
-func (s *sSEPubSubService) GetPublicTopics() map[string]*topic {
+func (s *SSEPubSubService) GetPublicTopics() map[string]*Topic {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	// Create a copy of the map
-	newmap := make(map[string]*topic)
+	newmap := make(map[string]*Topic)
 	for k, v := range s.publicTopics {
 		newmap[k] = v
 	}
@@ -259,7 +306,7 @@ func (s *sSEPubSubService) GetPublicTopics() map[string]*topic {
 }
 
 // Get public topic by name
-func (s *sSEPubSubService) GetPublicTopicByName(name string) (*topic, bool) {
+func (s *SSEPubSubService) GetPublicTopicByName(name string) (*Topic, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

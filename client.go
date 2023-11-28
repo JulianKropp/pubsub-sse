@@ -20,30 +20,30 @@ const (
 type OnEventFunc func(string)
 
 // Client represents a subscriber with a channel to send messages.
-type client struct {
+type Client struct {
 	id     string
 	status status
 
-	stream  chan string
+	stream chan string
 
 	stopchan chan struct{}
 
 	lock sync.Mutex
 
-	sSEPubSubService *sSEPubSubService
+	sSEPubSubService *SSEPubSubService
 
-	privateTopics map[string]*topic
+	privateTopics map[string]*Topic
 
-	groups map[string]*group
+	groups map[string]*Group
 }
 
 // Create a new client
-func newClient(sSEPubSubService *sSEPubSubService) *client {
-	return &client{
+func newClient(sSEPubSubService *SSEPubSubService) *Client {
+	return &Client{
 		id:     uuid.New().String(),
 		status: Waiting,
 
-		stream:  make(chan string, 100),
+		stream: make(chan string, 100),
 
 		lock: sync.Mutex{},
 
@@ -51,14 +51,14 @@ func newClient(sSEPubSubService *sSEPubSubService) *client {
 
 		sSEPubSubService: sSEPubSubService,
 
-		privateTopics: make(map[string]*topic),
+		privateTopics: make(map[string]*Topic),
 
-		groups: make(map[string]*group),
+		groups: make(map[string]*Group),
 	}
 }
 
 // Stop the client from receiving messages over the event stream
-func (c *client) stop() {
+func (c *Client) stop() {
 	// Lock the client
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -77,7 +77,7 @@ func (c *client) stop() {
 }
 
 // Get ID
-func (c *client) GetID() string {
+func (c *Client) GetID() string {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -85,7 +85,7 @@ func (c *client) GetID() string {
 }
 
 // Get Status
-func (c *client) GetStatus() status {
+func (c *Client) GetStatus() status {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -93,22 +93,22 @@ func (c *client) GetStatus() status {
 }
 
 // Get public topics
-func (c *client) GetPublicTopics() map[string]*topic {
+func (c *Client) GetPublicTopics() map[string]*Topic {
 	return c.sSEPubSubService.GetPublicTopics()
 }
 
 // Get public topic by name
-func (c *client) GetPublicTopicByName(name string) (*topic, bool) {
+func (c *Client) GetPublicTopicByName(name string) (*Topic, bool) {
 	return c.sSEPubSubService.GetPublicTopicByName(name)
 }
 
 // Get private topics
-func (c *client) GetPrivateTopics() map[string]*topic {
+func (c *Client) GetPrivateTopics() map[string]*Topic {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	// Create a copy of the private topics
-	newmap := make(map[string]*topic)
+	newmap := make(map[string]*Topic)
 	for k, v := range c.privateTopics {
 		newmap[k] = v
 	}
@@ -117,7 +117,7 @@ func (c *client) GetPrivateTopics() map[string]*topic {
 }
 
 // Get private topic by name
-func (c *client) GetPrivateTopicByName(name string) (*topic, bool) {
+func (c *Client) GetPrivateTopicByName(name string) (*Topic, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -126,7 +126,7 @@ func (c *client) GetPrivateTopicByName(name string) (*topic, bool) {
 }
 
 // Add group
-func (c *client) addGroup(g *group) {
+func (c *Client) addGroup(g *Group) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -134,7 +134,7 @@ func (c *client) addGroup(g *group) {
 }
 
 // Remove group
-func (c *client) removeGroup(g *group) {
+func (c *Client) removeGroup(g *Group) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -142,12 +142,12 @@ func (c *client) removeGroup(g *group) {
 }
 
 // Get groups
-func (c *client) GetGroups() map[string]*group {
+func (c *Client) GetGroups() map[string]*Group {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	// Create a copy of the groups
-	newmap := make(map[string]*group)
+	newmap := make(map[string]*Group)
 	for k, v := range c.groups {
 		newmap[k] = v
 	}
@@ -156,7 +156,7 @@ func (c *client) GetGroups() map[string]*group {
 }
 
 // Get group by name
-func (c *client) GetGroupByName(name string) (*group, bool) {
+func (c *Client) GetGroupByName(name string) (*Group, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -165,11 +165,11 @@ func (c *client) GetGroupByName(name string) (*group, bool) {
 }
 
 // Get all topics
-func (c *client) GetAllTopics() map[string]*topic {
+func (c *Client) GetAllTopics() map[string]*Topic {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	newmap := make(map[string]*topic)
+	newmap := make(map[string]*Topic)
 	for k, v := range c.GetPublicTopics() {
 		newmap[k] = v
 	}
@@ -185,7 +185,7 @@ func (c *client) GetAllTopics() map[string]*topic {
 }
 
 // Get topic by name
-func (c *client) GetTopicByName(name string) (*topic, bool) {
+func (c *Client) GetTopicByName(name string) (*Topic, bool) {
 	topics := c.GetAllTopics()
 
 	t, ok := topics[name]
@@ -193,8 +193,8 @@ func (c *client) GetTopicByName(name string) (*topic, bool) {
 }
 
 // Get subscribed topics
-func (c *client) GetSubscribedTopics() map[string]*topic {
-	topics := make(map[string]*topic)
+func (c *Client) GetSubscribedTopics() map[string]*Topic {
+	topics := make(map[string]*Topic)
 	for k, v := range c.GetAllTopics() {
 		if v.IsSubscribed(c) {
 			topics[k] = v
@@ -208,13 +208,13 @@ func (c *client) GetSubscribedTopics() map[string]*topic {
 // 1. Create a new private topic
 // 2. Add the topic to the client
 // 3. Inform the client about the new topic
-func (c *client) NewPrivateTopic(name string) *topic {
+func (c *Client) NewPrivateTopic(name string) *Topic {
 	// if topic exists, return it
 	if t, ok := c.GetPrivateTopicByName(name); ok {
 		return t
 	}
 
-	t := newTopic(name, Private)
+	t := newTopic(name, TPrivate)
 
 	c.lock.Lock()
 	c.privateTopics[t.GetName()] = t
@@ -233,7 +233,7 @@ func (c *client) NewPrivateTopic(name string) *topic {
 // 1. Unsubscribe from the topic
 // 2. Remove the topic from the client
 // 3. Inform the client about the removed topic by sending the new topic list
-func (c *client) RemovePrivateTopic(t *topic) {
+func (c *Client) RemovePrivateTopic(t *Topic) {
 	// if topic does not exist, return
 	if _, ok := c.GetPrivateTopicByName(t.GetName()); !ok {
 		log.Errorf("[C:%s]: topic %s does not exist", c.GetID(), t.GetName())
@@ -259,7 +259,7 @@ func (c *client) RemovePrivateTopic(t *topic) {
 // Subscribe to a topic
 // 1. If client can subscribe to this topic, add client to topic and return nil
 // 2. Inform the client about the new topic by sending this topic as subscribed
-func (c *client) Sub(topic *topic) error {
+func (c *Client) Sub(topic *Topic) error {
 	// if topic exists, add client to topic and return nil
 	if t, ok := c.GetTopicByName(topic.GetName()); ok {
 		if topic == t {
@@ -280,7 +280,7 @@ func (c *client) Sub(topic *topic) error {
 // Unsubscribe from a topic
 // 1. If client is subscribed to this topic, remove client from topic and return nil
 // 2. Inform the client about the new topic by sending this topic as unsubscribed
-func (c *client) Unsub(topic *topic) error {
+func (c *Client) Unsub(topic *Topic) error {
 	// if topic exists and client is subscribed to it, remove client from topic and return nil
 	if t, ok := c.GetTopicByName(topic.GetName()); ok {
 		if topic == t {
@@ -304,7 +304,7 @@ func (c *client) Unsub(topic *topic) error {
 // send a message to the client
 // 1. Marshal the data
 // 2. Put the data into the stream to send it to the client
-func (c *client) send(msg interface{}) error {
+func (c *Client) send(msg interface{}) error {
 	// Marshal the data
 	jsonData, err := json.Marshal(msg)
 	if err != nil {
@@ -332,7 +332,7 @@ func (c *client) send(msg interface{}) error {
 }
 
 // sendTopicList sends a message to the client to inform it about the topics
-func (c *client) sendTopicList() error {
+func (c *Client) sendTopicList() error {
 	// Get all topics
 	topics := c.GetAllTopics()
 
@@ -365,7 +365,7 @@ func (c *client) sendTopicList() error {
 }
 
 // sendSubscribedTopic sends a message to the client to inform it about the subscribed topic
-func (c *client) sendSubscribedTopic(topic *topic) error {
+func (c *Client) sendSubscribedTopic(topic *Topic) error {
 	// Build the JSON data
 	fulldata := &eventData{
 		Sys: []eventDataSys{
@@ -389,7 +389,7 @@ func (c *client) sendSubscribedTopic(topic *topic) error {
 }
 
 // sendUnsubscribedTopic sends a message to the client to inform it about the unsubscribed topic
-func (c *client) sendUnsubscribedTopic(topic *topic) error {
+func (c *Client) sendUnsubscribedTopic(topic *Topic) error {
 	// Build the JSON data
 	fulldata := &eventData{
 		Sys: []eventDataSys{
@@ -414,7 +414,7 @@ func (c *client) sendUnsubscribedTopic(topic *topic) error {
 
 // sendInitMSG generates the initial message to send to the client
 // It contains all topics and subscribed topics
-func (c *client) sendInitMSG(onEvent OnEventFunc) error {
+func (c *Client) sendInitMSG(onEvent OnEventFunc) error {
 	// Get all topics and subscribed topics
 	topics := c.GetAllTopics()
 	subtopics := c.GetSubscribedTopics()
@@ -464,7 +464,7 @@ func (c *client) sendInitMSG(onEvent OnEventFunc) error {
 // 3. Keep the connection open
 // 4. Send message to client if new data is published over the stream
 // 5. Stop the client if the stop channel is closed
-func (c *client) Start(ctx context.Context, onEvent OnEventFunc) error {
+func (c *Client) Start(ctx context.Context, onEvent OnEventFunc) error {
 	// Set status to Receving and create stop channel
 	if c.GetStatus() == Receving {
 		return fmt.Errorf("[C:%s]: Client is already receiving", c.GetID())
@@ -487,7 +487,7 @@ func (c *client) Start(ctx context.Context, onEvent OnEventFunc) error {
 	}
 
 	// Keep the connection open until it's closed by the client
-	loop:
+loop:
 	for {
 		select {
 		case msg, ok := <-c.stream:

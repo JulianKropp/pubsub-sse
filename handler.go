@@ -9,7 +9,7 @@ import (
 )
 
 // AddClient handles HTTP requests for adding a new client.
-func AddClient(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
+func AddClient(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Create a new client
@@ -21,7 +21,7 @@ func AddClient(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
 }
 
 // AddPublicTopic handles HTTP requests for adding a new public topic.
-func AddPublicTopic(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
+func AddPublicTopic(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// GET clientID and topic from request body
@@ -35,7 +35,7 @@ func AddPublicTopic(s *sSEPubSubService, w http.ResponseWriter, r *http.Request)
 }
 
 // AddPrivateTopic handles HTTP requests for adding a new private topic.
-func AddPrivateTopic(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
+func AddPrivateTopic(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// GET clientID and topic from request body
@@ -59,7 +59,7 @@ func AddPrivateTopic(s *sSEPubSubService, w http.ResponseWriter, r *http.Request
 }
 
 // Subscribe handles HTTP requests for client subscriptions.
-func Subscribe(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
+func Subscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// GET clientID and topic from request body
@@ -96,7 +96,7 @@ func Subscribe(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
 }
 
 // Unsubscribe handles HTTP requests for client unsubscriptions.
-func Unsubscribe(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
+func Unsubscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// GET clientID and topic from request body
@@ -132,7 +132,7 @@ func Unsubscribe(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
 }
 
 // Event
-func Event(s *sSEPubSubService, w http.ResponseWriter, r *http.Request) {
+func Event(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// GET clientID and topic from request body
