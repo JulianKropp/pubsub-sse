@@ -155,6 +155,7 @@ func Event(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// SSE-specific headers
+	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
