@@ -315,7 +315,7 @@ func (c *Client) send(msg interface{}) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.status == Receving {
-		data := string(jsonData) + "\n"
+		data := "data: " + string(jsonData) + "\n\n"
 		select {
 		case c.stream <- data:
 			// successfully sent
@@ -451,7 +451,7 @@ func (c *Client) sendInitMSG(onEvent OnEventFunc) error {
 		return err
 	}
 
-	onEvent(string(jsonData) + "\n")
+	onEvent("data: " + string(jsonData) + "\n\n")
 
 	// Send JSON data to the client
 	return err

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -91,6 +92,13 @@ func httpToEvent(t *testing.T, client *Client, port int, connected, done chan bo
 					con = true
 					connected <- true
 					fmt.Printf("ok: %s\n", client.GetID())
+				}
+
+				// Remove the "data: " from message
+				message = strings.TrimPrefix(message, "data: ")
+
+				if message == "\n" {
+					continue
 				}
 
 				var rvalue eventData
