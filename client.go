@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/google/uuid"
@@ -312,23 +313,25 @@ func (c *Client) send(msg interface{}) error {
 	}
 
 	// Send the data
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.status == Receving {
+	if c.GetStatus() == Receving {
 		data := "data: " + string(jsonData) + "\n\n"
-		select {
-		case c.stream <- data:
-			// successfully sent
-			log.Infof("[C:%s]: push data to stream", c.id)
-		default:
-			// handle the case where the channel is full or the client is not receiving
-			return fmt.Errorf("[C:%s]: stream is full", c.id)
-		}
-	} else {
-		return fmt.Errorf("[C:%s]: client is not receiving", c.id)
-	}
 
-	return nil
+		//Try 10 times with 100ms to send data to the stream
+		for i := 0; i < 10; i++ {
+			select {
+			case c.stream <- data:
+				// successfully sent
+				log.Infof("[C:%s]: push data to stream", c.GetID())
+				return nil
+			default:
+				log.Infof("[C:%s]: stream is full: try: %d", c.GetID(), i)
+				time.Sleep(10 * time.Millisecond)		
+			}
+		}
+		// handle the case where the channel is full or the client is not receiving
+		return fmt.Errorf("[C:%s]: stream is full", c.GetID())
+	}
+	return fmt.Errorf("[C:%s]: client is not receiving", c.GetID())
 }
 
 // sendTopicList sends a message to the client to inform it about the topics
