@@ -474,6 +474,7 @@ func (c *Client) Start(ctx context.Context, onEvent OnEventFunc) error {
 	c.lock.Lock()
 	c.stopchan = make(chan struct{})
 	c.status = Receving
+	c.stream = make(chan string)
 	c.lock.Unlock()
 
 	// Stop the client at the end
