@@ -11,8 +11,11 @@
 
     <ul>
     </ul>
-
+    <script src="/pubsub-sse.js"></script>
     <script>
+        // Create a new PubSubSSE
+        const pSSSE = new PubSubSSE();
+
         // Make request to /add/user and get the json response with id of the new user
         const xhr = new XMLHttpRequest();
         xhr.open('GET', '/add/user');
@@ -24,45 +27,12 @@
 
             id = response.client_id;
 
-            const button = document.querySelector('button');
-            const evtSource = new EventSource('/event?client_id=' + id);
-            console.log(evtSource.withCredentials);
-            console.log(evtSource.readyState);
-            console.log(evtSource.url);
-            const eventList = document.querySelector('ul');
+            pSSSE.url = '/event?client_id=' + id
 
-            evtSource.onopen = function () {
-                console.log("Connection to server opened.");
-            };
+            pSSSE.open();
 
-            evtSource.onmessage = function (e) {
-                const newElement = document.createElement("li");
-                console.log(e.data);
-
-                newElement.textContent = "message: " + e.data;
-                eventList.appendChild(newElement);
-            };
-
-            evtSource.onerror = function () {
-                console.log("EventSource failed.");
-            };
-
-            button.onclick = function () {
-                console.log('Connection closed');
-                evtSource.close();
-            };
+            // const button = document.querySelector('button');
         };
-
-
-
-
-        // evtSource.addEventListener("ping", function(e) {
-        //   var newElement = document.createElement("li");
-        //
-        //   var obj = JSON.parse(e.data);
-        //   newElement.innerHTML = "ping at " + obj.time;
-        //   eventList.appendChild(newElement);
-        // }, false);
     </script>
 </body>
 
