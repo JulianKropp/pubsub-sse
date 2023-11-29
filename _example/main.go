@@ -13,6 +13,8 @@ func main() {
 	ssePubSub := pubsubsse.NewSSEPubSubService()
 
 	// Handle endpoints
+	http.Handle("/", http.FileServer(http.Dir("./web"))) // Serve static files
+
 	// You can write your own endpoints if you want. Just have a look at the examples and modify them to your needs.
 	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddClient(ssePubSub, w, r) })                 // Add client endpoint
 	http.HandleFunc("/add/topic/public/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPublicTopic(ssePubSub, w, r) })   // Add topic endpoint
@@ -24,87 +26,106 @@ func main() {
 		log.Fatal(http.ListenAndServe(":8080", nil)) // Start http server
 	}()
 
-	// Create a new client and get it by id
-	client := ssePubSub.NewClient()
-	client, _ = ssePubSub.GetClientByID(client.GetID())
-	fmt.Println("Client ID:", client.GetID())
+	// // Create a new client and get it by id
+	// client := ssePubSub.NewClient()
+	// client, _ = ssePubSub.GetClientByID(client.GetID())
+	// fmt.Println("Client ID:", client.GetID())
 
-	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("server/status")
+	// // Create a public topic
+	// pubTopic := ssePubSub.NewPublicTopic("server/status")
 
-	// Get topic by name. 3 ways to get a public topic:
-	pubTopic, _ = ssePubSub.GetPublicTopicByName("server/status")
-	pubTopic, _ = client.GetTopicByName("server/status")
-	pubTopic, _ = client.GetPublicTopicByName("server/status")
+	// // Get topic by name. 3 ways to get a public topic:
+	// pubTopic, _ = ssePubSub.GetPublicTopicByName("server/status")
+	// pubTopic, _ = client.GetTopicByName("server/status")
+	// pubTopic, _ = client.GetPublicTopicByName("server/status")
 
-	// Subscribe to the topic
-	client.Sub(pubTopic)
+	// // Subscribe to the topic
+	// client.Sub(pubTopic)
 
-	// Send data to the topic
-	pubTopic.Pub(TestData{Testdata: "testdata"})
+	// // Send data to the topic
+	// pubTopic.Pub(TestData{Testdata: "testdata"})
 
-	// Unsubscribe from topic
-	client.Unsub(pubTopic)
+	// // Unsubscribe from topic
+	// client.Unsub(pubTopic)
 
-	// Remove public topic
-	ssePubSub.RemovePublicTopic(pubTopic)
+	// // Remove public topic
+	// ssePubSub.RemovePublicTopic(pubTopic)
 
-	// Create a private topic
-	privTopic := client.NewPrivateTopic("test/server")
+	// // Create a private topic
+	// privTopic := client.NewPrivateTopic("test/server")
 
-	// Get topic by name. 2 ways to get a private topic:
-	privTopic, _ = client.GetTopicByName("test/server")
-	privTopic, _ = client.GetPrivateTopicByName("test/server")
+	// // Get topic by name. 2 ways to get a private topic:
+	// privTopic, _ = client.GetTopicByName("test/server")
+	// privTopic, _ = client.GetPrivateTopicByName("test/server")
 
-	// Subscribe to the topic
-	client.Sub(privTopic)
+	// // Subscribe to the topic
+	// client.Sub(privTopic)
 
-	// Send data to the topic
-	privTopic.Pub(TestData{Testdata: "testdata"})
+	// // Send data to the topic
+	// privTopic.Pub(TestData{Testdata: "testdata"})
 
-	// Unsubscribe from topic
-	client.Unsub(privTopic)
+	// // Unsubscribe from topic
+	// client.Unsub(privTopic)
 
-	// Remove private topic
-	client.RemovePrivateTopic(privTopic)
+	// // Remove private topic
+	// client.RemovePrivateTopic(privTopic)
 
-	// Create a group
-	group := ssePubSub.NewGroup("testgroup")
-	group, _ = ssePubSub.GetGroupByName("testgroup")
+	// // Create a group
+	// group := ssePubSub.NewGroup("testgroup")
+	// group, _ = ssePubSub.GetGroupByName("testgroup")
 
-	// Add client to group
-	group.AddClient(client)
+	// // Add client to group
+	// group.AddClient(client)
 
-	// Get group from client
-	group, _ = client.GetGroupByName("testgroup")
+	// // Get group from client
+	// group, _ = client.GetGroupByName("testgroup")
 
-	// Create a group topic
-	groupTopic := group.NewTopic("test/group")
+	// // Create a group topic
+	// groupTopic := group.NewTopic("test/group")
 
-	// Get topic by name. 2 ways to get a group topic:
-	groupTopic, _ = group.GetTopicByName("test/group")
-	groupTopic, _ = client.GetTopicByName("test/group")
+	// // Get topic by name. 2 ways to get a group topic:
+	// groupTopic, _ = group.GetTopicByName("test/group")
+	// groupTopic, _ = client.GetTopicByName("test/group")
 
-	// Subscribe to the topic
-	client.Sub(groupTopic)
+	// // Subscribe to the topic
+	// client.Sub(groupTopic)
 
-	// Send data to the topic
-	groupTopic.Pub(TestData{Testdata: "testdata"})
+	// // Send data to the topic
+	// groupTopic.Pub(TestData{Testdata: "testdata"})
 
-	// Unsubscribe from topic
-	client.Unsub(groupTopic)
+	// // Unsubscribe from topic
+	// client.Unsub(groupTopic)
 
-	// Remove group topic
-	group.RemoveTopic(groupTopic)
+	// // Remove group topic
+	// group.RemoveTopic(groupTopic)
 
-	// Remove client from group
-	group.RemoveClient(client)
+	// // Remove client from group
+	// group.RemoveClient(client)
 
-	// Remove group
-	ssePubSub.RemoveGroup(group)
+	// // Remove group
+	// ssePubSub.RemoveGroup(group)
 
-	// Remove client
-	ssePubSub.RemoveClient(client)
+	// // Remove client
+	// ssePubSub.RemoveClient(client)
+
+	// Create Public topic PUBLIC
+	pubTopic := ssePubSub.NewPublicTopic("PUBLIC")
+
+	// If client is created
+	ssePubSub.OnNewClient(func(c *pubsubsse.Client) {
+		fmt.Println("New client:", c.GetID())
+
+		// Subscribe to public topic
+		c.Sub(pubTopic)
+	})
+
+	// Send data to PUBLIC every 5s
+	go func() {
+		for {
+			pubTopic.Pub("DATAAAAAA")
+			time.Sleep(5 * time.Second)
+		}
+	}()
 
 	time.Sleep(500 * time.Second)
 }
