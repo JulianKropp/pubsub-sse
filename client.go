@@ -42,13 +42,13 @@ type Client struct {
 	OnNewTopic *eventManager[*Topic]
 	OnNewPublicTopic *eventManager[*Topic]
 	OnNewPrivateTopic *eventManager[*Topic]
-	OnNewGroupTopic *eventManager[*Topic]
+	OnNewGroupTopic *eventManager[*GroupTopic]
 	OnNewGroup *eventManager[*Group]
 	OnSubToTopic *eventManager[*Topic]
 	OnRemoveTopic *eventManager[*Topic]
 	OnRemovePublicTopic *eventManager[*Topic]
 	OnRemovePrivateTopic *eventManager[*Topic]
-	OnRemoveGroupTopic *eventManager[*Topic]
+	OnRemoveGroupTopic *eventManager[*GroupTopic]
 	OnRemoveGroup *eventManager[*Group]
 	OnUnsubFromTopic *eventManager[*Topic]
 }
@@ -76,13 +76,13 @@ func newClient(sSEPubSubService *SSEPubSubService) *Client {
 		OnNewTopic: newEventManager[*Topic](),
 		OnNewPublicTopic: sSEPubSubService.OnNewPublicTopic,
 		OnNewPrivateTopic: newEventManager[*Topic](),
-		OnNewGroupTopic: newEventManager[*Topic](),
+		OnNewGroupTopic: newEventManager[*GroupTopic](),
 		OnNewGroup: newEventManager[*Group](),
 		OnSubToTopic: newEventManager[*Topic](),
 		OnRemoveTopic: newEventManager[*Topic](),
 		OnRemovePublicTopic: sSEPubSubService.OnRemovePublicTopic,
 		OnRemovePrivateTopic: newEventManager[*Topic](),
-		OnRemoveGroupTopic: newEventManager[*Topic](),
+		OnRemoveGroupTopic: newEventManager[*GroupTopic](),
 		OnRemoveGroup: newEventManager[*Group](),
 		OnUnsubFromTopic: newEventManager[*Topic](),
 	}
@@ -178,7 +178,12 @@ func (c *Client) addGroup(g *Group) {
 	c.OnNewGroup.Emit(g)
 	for _, t := range g.GetTopics() {
 		c.OnNewTopic.Emit(t)
-		c.OnNewGroupTopic.Emit(t)
+
+		gt := &GroupTopic{
+			Group: g,
+			Topic: t,
+		}
+		c.OnNewGroupTopic.Emit(gt)
 	}
 }
 
@@ -193,7 +198,11 @@ func (c *Client) removeGroup(g *Group) {
 	c.OnRemoveGroup.Emit(g)
 	for _, t := range g.GetTopics() {
 		c.OnRemoveTopic.Emit(t)
-		c.OnRemoveGroupTopic.Emit(t)
+		gt := &GroupTopic{
+			Group: g,
+			Topic: t,
+		}
+		c.OnRemoveGroupTopic.Emit(gt)
 	}
 }
 

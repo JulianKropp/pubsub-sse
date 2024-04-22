@@ -28,6 +28,12 @@ type Group struct {
 	OnRemoveGroupTopic *eventManager[*Topic]
 }
 
+// GroupTopic
+type GroupTopic struct {
+	Topic *Topic
+	Group *Group
+}
+
 func newGroup(name string) *Group {
 	return &Group{
 		name: name,
@@ -133,7 +139,12 @@ func (g *Group) NewTopic(name string) *Topic {
 
 		// Event:
 		c.OnNewTopic.Emit(t)
-		c.OnNewGroupTopic.Emit(t)
+
+		gt := &GroupTopic{
+			Group: g,
+			Topic: t,
+		}
+		c.OnNewGroupTopic.Emit(gt)
 		t.OnNewClient.Emit(c)
 	}
 
@@ -189,7 +200,11 @@ func (g *Group) RemoveTopic(t *Topic) {
 
 		// Event:
 		c.OnRemoveTopic.Emit(t)
-		c.OnRemoveGroupTopic.Emit(t)
+		gt := &GroupTopic{
+			Group: g,
+			Topic: t,
+		}
+		c.OnRemoveGroupTopic.Emit(gt)
 		t.OnRemoveClient.Emit(c)
 	}
 
