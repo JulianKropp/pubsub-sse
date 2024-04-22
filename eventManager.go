@@ -7,7 +7,7 @@ import (
 )
 
 // eventType represents a function type that takes a pointer of any type.
-type eventType[T any] func(t *T)
+type eventType[T any] func(t T)
 
 // EventManager manages events for a specific type.
 type eventManager[T any] struct {
@@ -53,7 +53,7 @@ func (em *eventManager[T]) GetListeners() []string {
 }
 
 // Emit fires all events of this type.
-func (em *eventManager[T]) Emit(item *T) {
+func (em *eventManager[T]) Emit(item T) {
 	em.lock.RLock()
 	defer em.lock.RUnlock()
 	for _, listener := range em.listeners {

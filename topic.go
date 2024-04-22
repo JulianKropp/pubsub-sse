@@ -23,6 +23,13 @@ type Topic struct {
 	ttype   topicType
 	clients map[string]*Client
 	lock    sync.Mutex
+
+	// Events:
+	OnNewClient *eventManager[*Client]
+	OnNewSubOfClient *eventManager[*Client]
+	OnPub *eventManager[interface{}]
+	OnRemoveClient *eventManager[*Client]
+	OnUnsubOfClient *eventManager[*Client]
 }
 
 // Create a new topic
@@ -32,6 +39,13 @@ func newTopic(name string, ttype topicType) *Topic {
 		id:      uuid.New().String(),
 		ttype:   ttype,
 		clients: make(map[string]*Client),
+
+		// Events:
+		OnNewClient: newEventManager[*Client](),
+		OnNewSubOfClient: newEventManager[*Client](),
+		OnPub: newEventManager[interface{}](),
+		OnRemoveClient: newEventManager[*Client](),
+		OnUnsubOfClient: newEventManager[*Client](),
 	}
 }
 
@@ -65,6 +79,9 @@ func (t *Topic) addClient(c *Client) {
 	defer t.lock.Unlock()
 
 	t.clients[c.id] = c
+
+	// Events
+	t.OnNewSubOfClient.Emit(c)
 }
 
 // Remove a client from the topic
@@ -73,6 +90,9 @@ func (t *Topic) removeClient(c *Client) {
 	defer t.lock.Unlock()
 
 	delete(t.clients, c.id)
+
+	// Events
+	t.OnUnsubOfClient.Emit(c)
 }
 
 // Get all clients in the topic
@@ -136,6 +156,9 @@ func (t *Topic) Pub(msg interface{}) error {
 			log.Errorf("[T:%s]: Error sending data to client: %s", t.GetName(), err.Error())
 		}
 	}
+
+	// Events
+	t.OnPub.Emit(fulldata)
 
 	return nil
 }

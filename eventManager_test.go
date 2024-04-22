@@ -26,7 +26,7 @@ func TestNewEventManager(t *testing.T) {
 
 // Register a new listener
 func TestEventManager_Listen(t *testing.T) {
-	manager := newEventManager[int]()
+	manager := newEventManager[*int]()
 	received := false
 	listener := func(t *int) {
 		received = true
@@ -46,7 +46,7 @@ func TestEventManager_Listen(t *testing.T) {
 
 // Remove a listener
 func TestEventManager_Remove(t *testing.T) {
-	manager := newEventManager[int]()
+	manager := newEventManager[*int]()
 	received := false
 	listener := func(t *int) {
 		received = true
@@ -61,7 +61,7 @@ func TestEventManager_Remove(t *testing.T) {
 
 // Get all listeners
 func TestEventManager_GetListeners(t *testing.T) {
-	manager := newEventManager[int]()
+	manager := newEventManager[*int]()
 	listener1 := func(t *int) {}
 	id := manager.Listen(listener1)
 	listeners := manager.GetListeners()
@@ -83,7 +83,7 @@ func TestEventManager_GetListeners(t *testing.T) {
 
 // Emit an event
 func TestEventManager_Emit(t *testing.T) {
-	manager := newEventManager[int]()
+	manager := newEventManager[*int]()
 	var received int
 	listener := func(t *int) {
 		received = *t
@@ -98,7 +98,7 @@ func TestEventManager_Emit(t *testing.T) {
 }
 
 func TestConcurrentAccess(t *testing.T) {
-	manager := newEventManager[int]()
+	manager := newEventManager[*int]()
 	var wg sync.WaitGroup
 
 	wg.Add(3)

@@ -15,7 +15,12 @@ type SSEPubSubService struct {
 	lock sync.Mutex
 
 	// Events:
-	OnNewClient *eventManager[Client]
+	OnNewClient *eventManager[*Client]
+	OnNewPublicTopic *eventManager[*Topic]
+	OnNewGroup *eventManager[*Group]
+	OnRemoveClient *eventManager[*Client]
+	OnRemovePublicTopic *eventManager[*Topic]
+	OnRemoveGroup *eventManager[*Group]
 }
 
 // NewSSEPubSub creates a new sSEPubSubService instance.
@@ -27,7 +32,12 @@ func NewSSEPubSubService() *SSEPubSubService {
 
 		lock: sync.Mutex{},
 
-		OnNewClient: newEventManager[Client](),
+		OnNewClient: newEventManager[*Client](),
+		OnNewPublicTopic: newEventManager[*Topic](),
+		OnNewGroup: newEventManager[*Group](),
+		OnRemoveClient: newEventManager[*Client](),
+		OnRemovePublicTopic: newEventManager[*Topic](),
+		OnRemoveGroup: newEventManager[*Group](),
 	}
 }
 
@@ -74,6 +84,9 @@ func (s *SSEPubSubService) RemoveClient(c *Client) {
 
 	// Remove client from sSEPubSubService
 	delete(s.clients, c.GetID())
+
+	// Emit event
+	s.OnRemoveClient.Emit(c)
 }
 
 // Add Group
@@ -93,6 +106,9 @@ func (s *SSEPubSubService) NewGroup(name string) *Group {
 	s.lock.Lock()
 	s.groups[g.GetName()] = g
 	s.lock.Unlock()
+
+	// Emit event
+	s.OnNewGroup.Emit(g)
 
 	return g
 }
@@ -131,6 +147,9 @@ func (s *SSEPubSubService) RemoveGroup(g *Group) {
 	s.lock.Lock()
 	delete(s.groups, g.GetName())
 	s.lock.Unlock()
+
+	// Emit event
+	s.OnRemoveGroup.Emit(g)
 }
 
 // Get groups
@@ -201,7 +220,14 @@ func (s *SSEPubSubService) NewPublicTopic(name string) *Topic {
 		if err := c.sendTopicList(); err != nil {
 			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
 		}
+
+		// event:
+		c.OnNewTopic.Emit(t)
+		t.OnNewClient.Emit(c)
 	}
+
+	// Emit event
+	s.OnNewPublicTopic.Emit(t)
 
 	return t
 }
@@ -250,7 +276,14 @@ func (s *SSEPubSubService) RemovePublicTopic(t *Topic) {
 		if err := c.sendTopicList(); err != nil {
 			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
 		}
+		
+		// Emit event
+		c.OnRemoveTopic.Emit(t)
+		t.OnRemoveClient.Emit(c)
 	}
+
+	// Emit event
+	s.OnRemovePublicTopic.Emit(t)
 }
 
 // Get public topics

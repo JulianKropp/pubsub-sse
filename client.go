@@ -36,6 +36,21 @@ type Client struct {
 	privateTopics map[string]*Topic
 
 	groups map[string]*Group
+
+	// Events:
+	OnStatusChange *eventManager[status]
+	OnNewTopic *eventManager[*Topic]
+	OnNewPublicTopic *eventManager[*Topic]
+	OnNewPrivateTopic *eventManager[*Topic]
+	OnNewGroupTopic *eventManager[*Topic]
+	OnNewGroup *eventManager[*Group]
+	OnSubToTopic *eventManager[*Topic]
+	OnRemoveTopic *eventManager[*Topic]
+	OnRemovePublicTopic *eventManager[*Topic]
+	OnRemovePrivateTopic *eventManager[*Topic]
+	OnRemoveGroupTopic *eventManager[*Topic]
+	OnRemoveGroup *eventManager[*Group]
+	OnUnsubFromTopic *eventManager[*Topic]
 }
 
 // Create a new client
@@ -55,21 +70,36 @@ func newClient(sSEPubSubService *SSEPubSubService) *Client {
 		privateTopics: make(map[string]*Topic),
 
 		groups: make(map[string]*Group),
+
+		// Events:
+		OnStatusChange: newEventManager[status](),
+		OnNewTopic: newEventManager[*Topic](),
+		OnNewPublicTopic: sSEPubSubService.OnNewPublicTopic,
+		OnNewPrivateTopic: newEventManager[*Topic](),
+		OnNewGroupTopic: newEventManager[*Topic](),
+		OnNewGroup: newEventManager[*Group](),
+		OnSubToTopic: newEventManager[*Topic](),
+		OnRemoveTopic: newEventManager[*Topic](),
+		OnRemovePublicTopic: sSEPubSubService.OnRemovePublicTopic,
+		OnRemovePrivateTopic: newEventManager[*Topic](),
+		OnRemoveGroupTopic: newEventManager[*Topic](),
+		OnRemoveGroup: newEventManager[*Group](),
+		OnUnsubFromTopic: newEventManager[*Topic](),
 	}
 }
 
 // Stop the client from receiving messages over the event stream
 func (c *Client) stop() {
-	// Lock the client
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.status == Waiting {
+	if c.GetStatus() == Waiting {
 		return
 	}
 
 	// Stop the client
-	c.status = Waiting
+	c.changeStatus(Waiting)
+
+	// Lock the client
+	c.lock.Lock()
+	defer c.lock.Unlock()
 
 	// Close the stream
 	if c.stream != nil {
@@ -83,6 +113,17 @@ func (c *Client) GetID() string {
 	defer c.lock.Unlock()
 
 	return c.id
+}
+
+// Change status
+func (c *Client) changeStatus(s status) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.status = s
+
+	// Emit event
+	c.OnStatusChange.Emit(c.status)
 }
 
 // Get Status
@@ -132,6 +173,13 @@ func (c *Client) addGroup(g *Group) {
 	defer c.lock.Unlock()
 
 	c.groups[g.GetName()] = g
+
+	// Emit event
+	c.OnNewGroup.Emit(g)
+	for _, t := range g.GetTopics() {
+		c.OnNewTopic.Emit(t)
+		c.OnNewGroupTopic.Emit(t)
+	}
 }
 
 // Remove group
@@ -140,6 +188,13 @@ func (c *Client) removeGroup(g *Group) {
 	defer c.lock.Unlock()
 
 	delete(c.groups, g.GetName())
+
+	// Emit event
+	c.OnRemoveGroup.Emit(g)
+	for _, t := range g.GetTopics() {
+		c.OnRemoveTopic.Emit(t)
+		c.OnRemoveGroupTopic.Emit(t)
+	}
 }
 
 // Get groups
@@ -226,6 +281,11 @@ func (c *Client) NewPrivateTopic(name string) *Topic {
 		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
 	}
 
+	// Emit event
+	c.OnNewTopic.Emit(t)
+	c.OnNewPrivateTopic.Emit(t)
+	t.OnNewClient.Emit(c)
+
 	return t
 }
 
@@ -255,6 +315,11 @@ func (c *Client) RemovePrivateTopic(t *Topic) {
 	if err := c.sendTopicList(); err != nil {
 		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
 	}
+
+	// Emit event
+	c.OnRemoveTopic.Emit(t)
+	c.OnRemovePrivateTopic.Emit(t)
+	t.OnRemoveClient.Emit(c)
 }
 
 // Subscribe to a topic
@@ -270,6 +335,9 @@ func (c *Client) Sub(topic *Topic) error {
 			if err := c.sendSubscribedTopic(t); err != nil {
 				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
 			}
+
+			// Emit event
+			c.OnSubToTopic.Emit(t)
 
 			return nil
 		}
@@ -294,6 +362,9 @@ func (c *Client) Unsub(topic *Topic) error {
 			if err := c.sendUnsubscribedTopic(t); err != nil {
 				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
 			}
+
+			// Emit event
+			c.OnUnsubFromTopic.Emit(t)
 
 			return nil
 		}
@@ -474,9 +545,9 @@ func (c *Client) Start(ctx context.Context, onEvent onEventFunc) error {
 	}
 
 	// Set status to Receving and create stop channel
+	c.changeStatus(Receving)
 	c.lock.Lock()
 	c.stopchan = make(chan struct{})
-	c.status = Receving
 	c.stream = make(chan string)
 	c.lock.Unlock()
 

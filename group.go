@@ -20,6 +20,12 @@ type Group struct {
 
 	// Clients is a map of client IDs to clients.
 	clients map[string]*Client
+
+	// Events:
+	OnNewClient *eventManager[*Client]
+	OnNewGroupTopic *eventManager[*Topic]
+	OnRemoveClient *eventManager[*Client]
+	OnRemoveGroupTopic *eventManager[*Topic]
 }
 
 func newGroup(name string) *Group {
@@ -31,6 +37,11 @@ func newGroup(name string) *Group {
 
 		topics:  map[string]*Topic{},
 		clients: map[string]*Client{},
+
+		OnNewClient: newEventManager[*Client](),
+		OnNewGroupTopic: newEventManager[*Topic](),
+		OnRemoveClient: newEventManager[*Client](),	
+		OnRemoveGroupTopic: newEventManager[*Topic](),
 	}
 }
 
@@ -119,7 +130,15 @@ func (g *Group) NewTopic(name string) *Topic {
 		if err := c.sendTopicList(); err != nil {
 			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
 		}
+
+		// Event:
+		c.OnNewTopic.Emit(t)
+		c.OnNewGroupTopic.Emit(t)
+		t.OnNewClient.Emit(c)
 	}
+
+	// Event:
+	g.OnNewGroupTopic.Emit(t)
 
 	return t
 }
@@ -167,7 +186,15 @@ func (g *Group) RemoveTopic(t *Topic) {
 		if err := c.sendTopicList(); err != nil {
 			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
 		}
+
+		// Event:
+		c.OnRemoveTopic.Emit(t)
+		c.OnRemoveGroupTopic.Emit(t)
+		t.OnRemoveClient.Emit(c)
 	}
+
+	// Event:
+	g.OnRemoveGroupTopic.Emit(t)
 }
 
 // AddClient adds a client to the group.
@@ -193,6 +220,9 @@ func (g *Group) AddClient(c *Client) {
 	if err := c.sendTopicList(); err != nil {
 		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
 	}
+
+	// Event:
+	g.OnNewClient.Emit(c)
 }
 
 // RemoveClient removes a client from the group.
@@ -227,4 +257,7 @@ func (g *Group) RemoveClient(c *Client) {
 	if err := c.sendTopicList(); err != nil {
 		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
 	}
+
+	// Event:
+	g.OnRemoveClient.Emit(c)
 }
