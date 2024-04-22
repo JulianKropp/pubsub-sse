@@ -18,7 +18,7 @@ const (
 	Receving
 )
 
-type OnEventFunc func(string)
+type onEventFunc func(string)
 
 // Client represents a subscriber with a channel to send messages.
 type Client struct {
@@ -417,7 +417,7 @@ func (c *Client) sendUnsubscribedTopic(topic *Topic) error {
 
 // sendInitMSG generates the initial message to send to the client
 // It contains all topics and subscribed topics
-func (c *Client) sendInitMSG(onEvent OnEventFunc) error {
+func (c *Client) sendInitMSG(onEvent onEventFunc) error {
 	// Get all topics and subscribed topics
 	topics := c.GetAllTopics()
 	subtopics := c.GetSubscribedTopics()
@@ -467,7 +467,7 @@ func (c *Client) sendInitMSG(onEvent OnEventFunc) error {
 // 3. Keep the connection open
 // 4. Send message to client if new data is published over the stream
 // 5. Stop the client if the stop channel is closed
-func (c *Client) Start(ctx context.Context, onEvent OnEventFunc) error {
+func (c *Client) Start(ctx context.Context, onEvent onEventFunc) error {
 	// Set status to Receving and create stop channel
 	if c.GetStatus() == Receving {
 		return fmt.Errorf("[C:%s]: Client is already receiving", c.GetID())

@@ -26,7 +26,7 @@ import (
 // +Sub(topic *topic): error
 // +Unsub(topic *topic): error
 
-// +OnEvent(f OnEventFunc)
+// +OnEvent(f onEventFunc)
 // +RemoveOnEvent()
 // +Start(ctx Context)
 
