@@ -2,6 +2,7 @@ package pubsubsse
 
 import (
 	"sync"
+
 	"github.com/google/uuid"
 )
 
@@ -9,20 +10,20 @@ import (
 type EventType[T any] func(t *T)
 
 // EventManager manages events for a specific type.
-type EventManager[T any] struct {
+type eventManager[T any] struct {
 	listeners map[string]EventType[T]
 	lock      sync.RWMutex
 }
 
-// NewEventManager creates a new EventManager instance.
-func NewEventManager[T any]() *EventManager[T] {
-	return &EventManager[T]{
+// newEventManager creates a new eventManager instance.
+func newEventManager[T any]() *eventManager[T] {
+	return &eventManager[T]{
 		listeners: make(map[string]EventType[T]),
 	}
 }
 
 // On registers a new listener and returns its ID.
-func (em *EventManager[T]) Listen(listener EventType[T]) string {
+func (em *eventManager[T]) Listen(listener EventType[T]) string {
 	em.lock.Lock()
 	defer em.lock.Unlock()
 
@@ -33,14 +34,14 @@ func (em *EventManager[T]) Listen(listener EventType[T]) string {
 }
 
 // Remove deletes a listener by its ID.
-func (em *EventManager[T]) Remove(id string) {
+func (em *eventManager[T]) Remove(id string) {
 	em.lock.Lock()
 	defer em.lock.Unlock()
 	delete(em.listeners, id)
 }
 
 // GetListeners returns all current listener IDs.
-func (em *EventManager[T]) GetListeners() []string {
+func (em *eventManager[T]) GetListeners() []string {
 	em.lock.RLock()
 	defer em.lock.RUnlock()
 
@@ -52,7 +53,7 @@ func (em *EventManager[T]) GetListeners() []string {
 }
 
 // Emit fires all events of this type.
-func (em *EventManager[T]) Emit(item *T) {
+func (em *eventManager[T]) Emit(item *T) {
 	em.lock.RLock()
 	defer em.lock.RUnlock()
 	for _, listener := range em.listeners {
