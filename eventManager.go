@@ -6,24 +6,24 @@ import (
 	"github.com/google/uuid"
 )
 
-// EventType represents a function type that takes a pointer of any type.
-type EventType[T any] func(t *T)
+// eventType represents a function type that takes a pointer of any type.
+type eventType[T any] func(t *T)
 
 // EventManager manages events for a specific type.
 type eventManager[T any] struct {
-	listeners map[string]EventType[T]
+	listeners map[string]eventType[T]
 	lock      sync.RWMutex
 }
 
 // newEventManager creates a new eventManager instance.
 func newEventManager[T any]() *eventManager[T] {
 	return &eventManager[T]{
-		listeners: make(map[string]EventType[T]),
+		listeners: make(map[string]eventType[T]),
 	}
 }
 
 // On registers a new listener and returns its ID.
-func (em *eventManager[T]) Listen(listener EventType[T]) string {
+func (em *eventManager[T]) Listen(listener eventType[T]) string {
 	em.lock.Lock()
 	defer em.lock.Unlock()
 
