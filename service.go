@@ -4,10 +4,7 @@ import (
 	"sync"
 
 	"github.com/apex/log"
-	"github.com/google/uuid"
 )
-
-type funcClient func(*Client)
 
 // SSEPubSubService represents the SSE publisher and subscriber system.
 type SSEPubSubService struct {
@@ -18,7 +15,7 @@ type SSEPubSubService struct {
 	lock sync.Mutex
 
 	// Events:
-	eventsOnNewClient map[string]funcClient
+	OnNewClient *eventManager[Client]
 }
 
 // NewSSEPubSub creates a new sSEPubSubService instance.
@@ -30,7 +27,7 @@ func NewSSEPubSubService() *SSEPubSubService {
 
 		lock: sync.Mutex{},
 
-		eventsOnNewClient: make(map[string]funcClient),
+		OnNewClient: newEventManager[Client](),
 	}
 }
 
@@ -44,44 +41,9 @@ func (s *SSEPubSubService) NewClient() *Client {
 	s.lock.Unlock()
 
 	// Emit event
-	s.emitOnNewClient(c)
+	s.OnNewClient.Emit(c)
 
 	return c
-}
-
-// Event: When client is created
-func (s *SSEPubSubService) OnNewClient(f funcClient) string {
-	// Lock the sSEPubSubService
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	id := uuid.New().String()
-
-	// Add f to eventsOnNewClient map
-	s.eventsOnNewClient[id] = f
-	return id
-}
-
-// Emit Event: When client is created
-func (s *SSEPubSubService) emitOnNewClient(c *Client) {
-	// Lock the sSEPubSubService
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// Emit event
-	for _, f := range s.eventsOnNewClient {
-		go f(c)
-	}
-}
-
-// Remove Event: When client is created
-func (s *SSEPubSubService) RemoveOnNewClient(id string) {
-	// Lock the sSEPubSubService
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// Remove f from eventsOnNewClient map
-	delete(s.eventsOnNewClient, id)
 }
 
 // Remove client

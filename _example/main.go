@@ -112,7 +112,7 @@ func main() {
 	pubTopic := ssePubSub.NewPublicTopic("PUBLIC")
 
 	// If client is created
-	ssePubSub.OnNewClient(func(c *pubsubsse.Client) {
+	ssePubSub.OnNewClient.Listen(func(c *pubsubsse.Client) {
 		fmt.Println("New client:", c.GetID())
 
 		// Subscribe to public topic
