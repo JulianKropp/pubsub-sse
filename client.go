@@ -372,9 +372,6 @@ func (c *Client) Unsub(topic *Topic) error {
 				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
 			}
 
-			// Emit event
-			c.OnUnsubFromTopic.Emit(t)
-
 			return nil
 		}
 	}

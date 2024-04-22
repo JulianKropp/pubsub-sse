@@ -238,6 +238,9 @@ func (g *Group) AddClient(c *Client) {
 
 	// Event:
 	g.OnNewClient.Emit(c)
+	for _, t := range g.GetTopics() {
+		t.OnNewClient.Emit(c)
+	}
 }
 
 // RemoveClient removes a client from the group.
@@ -258,6 +261,9 @@ func (g *Group) RemoveClient(c *Client) {
 		if err := c.Unsub(t); err != nil {
 			log.Errorf("[C:%s]: Error unsuscribing client from topic: %s", c.id, err)
 		}
+
+		// Event:
+		t.OnRemoveClient.Emit(c)
 	}
 
 	// Remove client from the group

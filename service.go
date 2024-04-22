@@ -52,6 +52,9 @@ func (s *SSEPubSubService) NewClient() *Client {
 
 	// Emit event
 	s.OnNewClient.Emit(c)
+	for _, t := range s.GetPublicTopics() {
+		t.OnNewClient.Emit(c)
+	}
 
 	return c
 }
@@ -70,9 +73,22 @@ func (s *SSEPubSubService) RemoveClient(c *Client) {
 		}
 	}
 
+	// Remove public topics
+	for _, t := range c.GetPublicTopics() {
+		c.OnRemoveTopic.Emit(t)
+		c.OnRemovePublicTopic.Emit(t)
+		t.OnRemoveClient.Emit(c)
+	}
+
 	// Remove all private topics
 	for _, t := range c.GetPrivateTopics() {
 		c.RemovePrivateTopic(t)
+	}
+
+	// Remove all groups
+	groups := c.GetGroups()
+	for _, g := range groups {
+		g.RemoveClient(c)
 	}
 
 	// stop the client
