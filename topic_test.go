@@ -5,7 +5,7 @@ import (
 )
 
 // Tests for:
-// +GetName(): string
+// +GetID(): string
 // +GetID(): string
 // +GetType(): string
 // +GetClients(): map[string]*client
@@ -14,17 +14,9 @@ import (
 // -addClient(c *client)
 // -removeClient(c *client)
 
-// TestGetName tests the GetName() method.
-func TestGetName(t *testing.T) {
-	topic := newTopic("test", "public")
-	if topic.GetName() != "test" {
-		t.Error("Expected topic name to be \"test\"")
-	}
-}
-
 // TestGetID tests the GetID() method.
 func TestGetID(t *testing.T) {
-	topic := newTopic("test", "public")
+	topic := newTopic("public")
 	if topic.GetID() == "" {
 		t.Error("Expected topic ID to be non-empty")
 	}
@@ -32,17 +24,17 @@ func TestGetID(t *testing.T) {
 
 // TestGetType tests the GetType() method.
 func TestGetType(t *testing.T) {
-	topic1 := newTopic("test", "public")
+	topic1 := newTopic("public")
 	if topic1.GetType() != "public" {
 		t.Error("Expected topic type to be \"public\"")
 	}
 
-	topic2 := newTopic("test", "private")
+	topic2 := newTopic("private")
 	if topic2.GetType() != "private" {
 		t.Error("Expected topic type to be \"private\"")
 	}
 
-	topic3 := newTopic("test", "group")
+	topic3 := newTopic("group")
 	if topic3.GetType() != "group" {
 		t.Error("Expected topic type to be \"group\"")
 	}
@@ -50,7 +42,7 @@ func TestGetType(t *testing.T) {
 
 // TestGetClients tests the GetClients() method.
 func TestGetClients(t *testing.T) {
-	topic := newTopic("test", "public")
+	topic := newTopic("public")
 	if len(topic.GetClients()) != 0 {
 		t.Error("Expected topic to have no clients")
 	}
@@ -77,7 +69,7 @@ func TestIsSubscribed(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	c1 := ssePubSub.NewClient()
 
-	topic := c1.NewPrivateTopic("testTopic")
+	topic := c1.NewPrivateTopic()
 
 	if topic.IsSubscribed(c1) {
 		t.Error("Expected client to not be subscribed")
@@ -126,7 +118,7 @@ func TestPub(t *testing.T) {
 	<-connected1
 	<-connected2
 
-	topic := c1.NewPrivateTopic("testTopic")
+	topic := c1.NewPrivateTopic()
 
 	if err := c1.Sub(topic); err != nil {
 		t.Error("Expected client to subscribe to topic")
@@ -177,7 +169,7 @@ func TestAddClient(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	c1 := ssePubSub.NewClient()
 
-	topic := c1.NewPrivateTopic("testTopic")
+	topic := c1.NewPrivateTopic()
 
 	if len(topic.GetClients()) != 0 {
 		t.Error("Expected topic to have no clients")
@@ -198,7 +190,7 @@ func TestRemoveClient(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	c1 := ssePubSub.NewClient()
 
-	topic := c1.NewPrivateTopic("testTopic")
+	topic := c1.NewPrivateTopic()
 
 	if len(topic.GetClients()) != 0 {
 		t.Error("Expected topic to have no clients")

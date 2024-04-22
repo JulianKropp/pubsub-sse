@@ -1,6 +1,6 @@
 class Topic {
-    constructor(name, type) {
-        this.name = name;
+    constructor(id, type) {
+        this.id = id;
         this.type = type;
         this.subscribed = false;
         this.onSubscribed = null;
@@ -75,30 +75,30 @@ class PubSubSSE {
             if (type === "topics") {
                 let removedTopicsList = sysData.list;
                 sysData.list.forEach(topicInfo => {
-                    this.ensureTopic(topicInfo.name, topicInfo.type);
-                    delete removedTopicsList[topicInfo.name];
+                    this.ensureTopic(topicInfo.id, topicInfo.type);
+                    delete removedTopicsList[topicInfo.id];
                 });
     
                 // Remove topics that are no longer in the list
-                removedTopicsList.forEach(topicName => {
-                    const topic = this.topics[topicName];
+                removedTopicsList.forEach(topicId => {
+                    const topic = this.topics[topicId];
                     if (topic) {
                         if (topic.subscribed) {
                             topic.onUnsubscribed?.(); // Call the onUnsubscribed event if defined
                         }
-                        delete this.topics[topicName];
+                        delete this.topics[topicId];
                         this.onRemovedTopic?.(topic); // Notify client of topic removal
                     }
                 });
             } else if (type === "subscribed") {
                 sysData.list.forEach(topicInfo => {
-                    const topic = this.ensureTopic(topicInfo.name, topicInfo.type);
+                    const topic = this.ensureTopic(topicInfo.ID, topicInfo.type);
                     topic.onSubscribed?.(); // Call the onSubscribed event if defined
                     topic.subscribed = true; // Mark as subscribed
                 });
             } else if (type === "unsubscribed") {
                 sysData.list.forEach(topicInfo => {
-                    const topic = this.topics[topicInfo.name];
+                    const topic = this.topics[topicInfo.ID];
                     if (topic) {
                         topic.onUnsubscribed?.(); // Call the onUnsubscribed event if defined
                         topic.subscribed = false; // Mark as unsubscribed
@@ -120,15 +120,15 @@ class PubSubSSE {
         });
     }
 
-    ensureTopic(name, type) {
+    ensureTopic(ID, type) {
         let topic; // Define a local variable for the topic
-        if (!this.topics[name]) {
-            console.log("New topic: " + name);
-            topic = new Topic(name, type); // Assign the new Topic to the local variable
-            this.topics[name] = topic; // Store the Topic in the topics dictionary
+        if (!this.topics[ID]) {
+            console.log("New topic: " + ID);
+            topic = new Topic(ID, type); // Assign the new Topic to the local variable
+            this.topics[ID] = topic; // Store the Topic in the topics dictionary
             this.onNewTopic?.(topic); // Notify client of new topic using the local variable
         } else {
-            topic = this.topics[name]; // If the topic already exists, assign it to the local variable
+            topic = this.topics[ID]; // If the topic already exists, assign it to the local variable
         }
         return topic;
     }

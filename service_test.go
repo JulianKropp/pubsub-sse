@@ -10,16 +10,15 @@ import (
 // +GetClients(): map[string]*client
 // +GetClientByID(id string): *client, bool
 
-// +NewGroup(name string): *group
+// +NewGroup(ID string): *group
 // +RemoveGroup(g *group)
 // +GetGroups(): map[string]*group
-// +GetGroupByName(name string): *group, bool
+// +GetGroupByID(ID string): *group, bool
 
-// +NewPublicTopic(name string): *topic
+// +NewPublicTopic(ID string): *topic
 // +RemovePublicTopic(t *topic)
 // +GetPublicTopics(): map[string]*topic
-// +GetPublicTopicByName(name string): *topic, bool
-
+// +GetPublicTopicByID(ID string): *topic, bool
 
 // Create a new SSEPubSubService
 func TestNewSSEPubSubService(t *testing.T) {
@@ -99,11 +98,11 @@ func TestSSEPubSubService_GetClientByID(t *testing.T) {
 // Groups
 // --------------------------------------------
 
-// Create a new group and get it by name
+// Create a new group and get it by ID
 func TestSSEPubSubService_NewGroup(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	groupc := ssePubSub.NewGroup("test")
-	group, ok := ssePubSub.GetGroupByName("test")
+	groupc := ssePubSub.NewGroup()
+	group, ok := ssePubSub.GetGroupByID(groupc.GetID())
 	if !ok {
 		t.Error("Group not created: not found")
 	}
@@ -118,9 +117,9 @@ func TestSSEPubSubService_NewGroup(t *testing.T) {
 // Create a new group and remove it
 func TestSSEPubSubService_RemoveGroup(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	group := ssePubSub.NewGroup("test")
+	group := ssePubSub.NewGroup()
 	ssePubSub.RemoveGroup(group)
-	_, ok := ssePubSub.GetGroupByName(group.GetName())
+	_, ok := ssePubSub.GetGroupByID(group.GetID())
 	if ok {
 		t.Error("Group not removed")
 	}
@@ -132,24 +131,25 @@ func TestSSEPubSubService_RemoveGroup(t *testing.T) {
 // Create a new group and get all groups
 func TestSSEPubSubService_GetGroups(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	groupc := ssePubSub.NewGroup("test")
+	groupc := ssePubSub.NewGroup()
+	groupcID := groupc.GetID()
 	groups := ssePubSub.GetGroups()
 	if len(groups) != 1 {
 		t.Error("Groups not found")
 	}
-	if groups["test"] == nil {
+	if groups[groupcID] == nil {
 		t.Error("Group not found: nil")
 	}
-	if groups["test"] != groupc {
+	if groups[groupcID] != groupc {
 		t.Error("Group not found: wrong pointer")
 	}
 }
 
-// Create a new group and get it by name
-func TestSSEPubSubService_GetGroupByName(t *testing.T) {
+// Create a new group and get it by ID
+func TestSSEPubSubService_GetGroupByID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	groupc := ssePubSub.NewGroup("test")
-	group, ok := ssePubSub.GetGroupByName("test")
+	groupc := ssePubSub.NewGroup()
+	group, ok := ssePubSub.GetGroupByID(groupc.GetID())
 	if !ok {
 		t.Error("Group not found")
 	}
@@ -165,11 +165,11 @@ func TestSSEPubSubService_GetGroupByName(t *testing.T) {
 // Public Topics
 // --------------------------------------------
 
-// Create a new public topic and get it by name
+// Create a new public topic and get it by ID
 func TestSSEPubSubService_NewPublicTopic(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	topicc := ssePubSub.NewPublicTopic("test")
-	topic, ok := ssePubSub.GetPublicTopicByName("test")
+	topicc := ssePubSub.NewPublicTopic()
+	topic, ok := ssePubSub.GetPublicTopicByID(topicc.GetID())
 	if !ok {
 		t.Error("Public topic not created: not found")
 	}
@@ -184,9 +184,9 @@ func TestSSEPubSubService_NewPublicTopic(t *testing.T) {
 // Create a new public topic and remove it
 func TestSSEPubSubService_RemovePublicTopic(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	topic := ssePubSub.NewPublicTopic("test")
+	topic := ssePubSub.NewPublicTopic()
 	ssePubSub.RemovePublicTopic(topic)
-	_, ok := ssePubSub.GetPublicTopicByName(topic.GetName())
+	_, ok := ssePubSub.GetPublicTopicByID(topic.GetID())
 	if ok {
 		t.Error("Public topic not removed")
 	}
@@ -198,24 +198,25 @@ func TestSSEPubSubService_RemovePublicTopic(t *testing.T) {
 // Create a new public topic and get all public topics
 func TestSSEPubSubService_GetPublicTopics(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	topicc := ssePubSub.NewPublicTopic("test")
+	topicc := ssePubSub.NewPublicTopic()
+	topiccID := topicc.GetID()
 	topics := ssePubSub.GetPublicTopics()
 	if len(topics) != 1 {
 		t.Error("Public topics not found")
 	}
-	if topics["test"] == nil {
+	if topics[topiccID] == nil {
 		t.Error("Public topic not found: nil")
 	}
-	if topics["test"] != topicc {
+	if topics[topiccID] != topicc {
 		t.Error("Public topic not found: wrong pointer")
 	}
 }
 
-// Create a new public topic and get it by name
-func TestSSEPubSubService_GetPublicTopicByName(t *testing.T) {
+// Create a new public topic and get it by ID
+func TestSSEPubSubService_GetPublicTopicByID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	topicc := ssePubSub.NewPublicTopic("test")
-	topic, ok := ssePubSub.GetPublicTopicByName("test")
+	topicc := ssePubSub.NewPublicTopic()
+	topic, ok := ssePubSub.GetPublicTopicByID(topicc.GetID())
 	if !ok {
 		t.Error("Public topic not found")
 	}

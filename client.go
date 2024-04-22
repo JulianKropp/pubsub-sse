@@ -139,9 +139,9 @@ func (c *Client) GetPublicTopics() map[string]*Topic {
 	return c.sSEPubSubService.GetPublicTopics()
 }
 
-// Get public topic by name
-func (c *Client) GetPublicTopicByName(name string) (*Topic, bool) {
-	return c.sSEPubSubService.GetPublicTopicByName(name)
+// Get public topic by id
+func (c *Client) GetPublicTopicByID(id string) (*Topic, bool) {
+	return c.sSEPubSubService.GetPublicTopicByID(id)
 }
 
 // Get private topics
@@ -158,12 +158,12 @@ func (c *Client) GetPrivateTopics() map[string]*Topic {
 	return newmap
 }
 
-// Get private topic by name
-func (c *Client) GetPrivateTopicByName(name string) (*Topic, bool) {
+// Get private topic by id
+func (c *Client) GetPrivateTopicByID(id string) (*Topic, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	t, ok := c.privateTopics[name]
+	t, ok := c.privateTopics[id]
 	return t, ok
 }
 
@@ -172,7 +172,7 @@ func (c *Client) addGroup(g *Group) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.groups[g.GetName()] = g
+	c.groups[g.GetID()] = g
 
 	// Emit event
 	c.OnNewGroup.Emit(g)
@@ -192,7 +192,7 @@ func (c *Client) removeGroup(g *Group) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	delete(c.groups, g.GetName())
+	delete(c.groups, g.GetID())
 
 	// Emit event
 	c.OnRemoveGroup.Emit(g)
@@ -220,12 +220,12 @@ func (c *Client) GetGroups() map[string]*Group {
 	return newmap
 }
 
-// Get group by name
-func (c *Client) GetGroupByName(name string) (*Group, bool) {
+// Get group by id
+func (c *Client) GetGroupByID(id string) (*Group, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	g, ok := c.groups[name]
+	g, ok := c.groups[id]
 	return g, ok
 }
 
@@ -249,11 +249,11 @@ func (c *Client) GetAllTopics() map[string]*Topic {
 	return newmap
 }
 
-// Get topic by name
-func (c *Client) GetTopicByName(name string) (*Topic, bool) {
+// Get topic by id
+func (c *Client) GetTopicByID(id string) (*Topic, bool) {
 	topics := c.GetAllTopics()
 
-	t, ok := topics[name]
+	t, ok := topics[id]
 	return t, ok
 }
 
@@ -273,16 +273,11 @@ func (c *Client) GetSubscribedTopics() map[string]*Topic {
 // 1. Create a new private topic
 // 2. Add the topic to the client
 // 3. Inform the client about the new topic
-func (c *Client) NewPrivateTopic(name string) *Topic {
-	// if topic exists, return it
-	if t, ok := c.GetPrivateTopicByName(name); ok {
-		return t
-	}
-
-	t := newTopic(name, TPrivate)
+func (c *Client) NewPrivateTopic() *Topic {
+	t := newTopic(TPrivate)
 
 	c.lock.Lock()
-	c.privateTopics[t.GetName()] = t
+	c.privateTopics[t.GetID()] = t
 	c.lock.Unlock()
 
 	// Inform the client about the new topic
@@ -305,8 +300,8 @@ func (c *Client) NewPrivateTopic(name string) *Topic {
 // 3. Inform the client about the removed topic by sending the new topic list
 func (c *Client) RemovePrivateTopic(t *Topic) {
 	// if topic does not exist, return
-	if _, ok := c.GetPrivateTopicByName(t.GetName()); !ok {
-		log.Errorf("[C:%s]: topic %s does not exist", c.GetID(), t.GetName())
+	if _, ok := c.GetPrivateTopicByID(t.GetID()); !ok {
+		log.Errorf("[C:%s]: topic %s does not exist", c.GetID(), t.GetID())
 		return
 	}
 
@@ -317,7 +312,7 @@ func (c *Client) RemovePrivateTopic(t *Topic) {
 
 	// Remove topic from client
 	c.lock.Lock()
-	delete(c.privateTopics, t.GetName())
+	delete(c.privateTopics, t.GetID())
 	c.lock.Unlock()
 
 	// Inform the client about the removed topic by sending the new topic list
@@ -336,7 +331,7 @@ func (c *Client) RemovePrivateTopic(t *Topic) {
 // 2. Inform the client about the new topic by sending this topic as subscribed
 func (c *Client) Sub(topic *Topic) error {
 	// if topic exists, add client to topic and return nil
-	if t, ok := c.GetTopicByName(topic.GetName()); ok {
+	if t, ok := c.GetTopicByID(topic.GetID()); ok {
 		if topic == t {
 			t.addClient(c)
 
@@ -352,7 +347,7 @@ func (c *Client) Sub(topic *Topic) error {
 		}
 	}
 
-	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not subscribe to it", c.GetID(), topic.GetName())
+	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not subscribe to it", c.GetID(), topic.GetID())
 }
 
 // Unsubscribe from a topic
@@ -360,10 +355,10 @@ func (c *Client) Sub(topic *Topic) error {
 // 2. Inform the client about the new topic by sending this topic as unsubscribed
 func (c *Client) Unsub(topic *Topic) error {
 	// if topic exists and client is subscribed to it, remove client from topic and return nil
-	if t, ok := c.GetTopicByName(topic.GetName()); ok {
+	if t, ok := c.GetTopicByID(topic.GetID()); ok {
 		if topic == t {
 			if !t.IsSubscribed(c) {
-				return fmt.Errorf("[C:%s]: client is not subscribed to topic %s", c.GetID(), topic.GetName())
+				return fmt.Errorf("[C:%s]: client is not subscribed to topic %s", c.GetID(), topic.GetID())
 			}
 			t.removeClient(c)
 
@@ -372,11 +367,14 @@ func (c *Client) Unsub(topic *Topic) error {
 				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
 			}
 
+			// Emit event
+			c.OnUnsubFromTopic.Emit(t)
+
 			return nil
 		}
 	}
 
-	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not unsubscribe from it", c.GetID(), topic.GetName())
+	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not unsubscribe from it", c.GetID(), topic.GetID())
 }
 
 // send a message to the client
@@ -429,7 +427,7 @@ func (c *Client) sendTopicList() error {
 	// Append topics data
 	for _, topic := range topics {
 		t := eventDataSysList{
-			Name: topic.GetName(),
+			ID: topic.GetID(),
 			Type: topic.GetType(),
 		}
 
@@ -453,7 +451,7 @@ func (c *Client) sendSubscribedTopic(topic *Topic) error {
 				Type: "subscribed",
 				List: []eventDataSysList{
 					{
-						Name: topic.GetName(),
+						ID: topic.GetID(),
 					},
 				},
 			},
@@ -477,7 +475,7 @@ func (c *Client) sendUnsubscribedTopic(topic *Topic) error {
 				Type: "unsubscribed",
 				List: []eventDataSysList{
 					{
-						Name: topic.GetName(),
+						ID: topic.GetID(),
 					},
 				},
 			},
@@ -509,7 +507,7 @@ func (c *Client) sendInitMSG(onEvent onEventFunc) error {
 		topicData := eventDataSys{Type: "topics"}
 		for _, topic := range topics {
 			topicData.List = append(topicData.List, eventDataSysList{
-				Name: topic.GetName(),
+				ID: topic.GetID(),
 				Type: topic.GetType(),
 			})
 		}
@@ -520,7 +518,7 @@ func (c *Client) sendInitMSG(onEvent onEventFunc) error {
 	if len(subtopics) > 0 {
 		subTopicData := eventDataSys{Type: "subscribed"}
 		for _, topic := range subtopics {
-			subTopicData.List = append(subTopicData.List, eventDataSysList{Name: topic.GetName()})
+			subTopicData.List = append(subTopicData.List, eventDataSysList{ID: topic.GetID()})
 		}
 		fulldata.Sys = append(fulldata.Sys, subTopicData)
 	}

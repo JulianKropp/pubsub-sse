@@ -83,7 +83,7 @@ func TestSSEPubSubService_OnNewClient(t *testing.T) {
 	// Create a new client.
 	client = s.NewClient()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -113,9 +113,9 @@ func TestSSEPubSubService_OnNewPublicTopic(t *testing.T) {
 	})
 
 	// Create a new public topic.
-	topic = s.NewPublicTopic("test")
+	topic = s.NewPublicTopic()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -145,9 +145,9 @@ func TestSSEPubSubService_OnNewGroup(t *testing.T) {
 	})
 
 	// Create a new group.
-	group = s.NewGroup("test")
+	group = s.NewGroup()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -182,7 +182,7 @@ func TestSSEPubSubService_OnRemoveClient(t *testing.T) {
 	// Remove the client.
 	s.RemoveClient(client)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -212,12 +212,12 @@ func TestSSEPubSubService_OnRemovePublicTopic(t *testing.T) {
 	})
 
 	// Create a new public topic.
-	topic = s.NewPublicTopic("test")
+	topic = s.NewPublicTopic()
 
 	// Remove the topic.
 	s.RemovePublicTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -247,12 +247,12 @@ func TestSSEPubSubService_OnRemoveGroup(t *testing.T) {
 	})
 
 	// Create a new group.
-	group = s.NewGroup("test")
+	group = s.NewGroup()
 
 	// Remove the group.
 	s.RemoveGroup(group)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -304,10 +304,10 @@ func TestClient_OnNewTopic(t *testing.T) {
 	})
 
 	// Create a new public topic.
-	topic = s.NewPublicTopic("test0")
+	topic = s.NewPublicTopic()
 
 	<-mutex
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -315,10 +315,10 @@ func TestClient_OnNewTopic(t *testing.T) {
 	}
 
 	// Create a new private topic.
-	topic = c.NewPrivateTopic("test1")
+	topic = c.NewPrivateTopic()
 
 	<-mutex
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -326,14 +326,14 @@ func TestClient_OnNewTopic(t *testing.T) {
 	}
 
 	// Create a new group topic.
-	group1 := s.NewGroup("test2")
-	topic = group1.NewTopic("test2")
+	group1 := s.NewGroup()
+	topic = group1.NewTopic()
 
 	// Add the client to the group.
 	group1.AddClient(c)
 
 	<-mutex
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -341,10 +341,10 @@ func TestClient_OnNewTopic(t *testing.T) {
 	}
 
 	// Create a new group topic.
-	group2 := s.NewGroup("test3")
+	group2 := s.NewGroup()
 	group2.AddClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -352,10 +352,10 @@ func TestClient_OnNewTopic(t *testing.T) {
 	}
 
 	// Create a new group topic.
-	topic = group2.NewTopic("test4")
+	topic = group2.NewTopic()
 
 	<-mutex
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 4 {
@@ -391,9 +391,9 @@ func TestClient_OnNewPublicTopic(t *testing.T) {
 	})
 
 	// Create a new public topic.
-	topic = s.NewPublicTopic("test")
+	topic = s.NewPublicTopic()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -426,9 +426,9 @@ func TestClient_OnNewPrivateTopic(t *testing.T) {
 	})
 
 	// Create a new private topic.
-	topic = c.NewPrivateTopic("test")
+	topic = c.NewPrivateTopic()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -448,7 +448,7 @@ func TestClient_OnNewGroupTopic(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new group.
-	group := s.NewGroup("test")
+	group := s.NewGroup()
 
 	// Add the client to the group.
 	group.AddClient(c)
@@ -471,19 +471,18 @@ func TestClient_OnNewGroupTopic(t *testing.T) {
 	})
 
 	// Create a new group topic.
-	topic = group.NewTopic("test")
+	topic = group.NewTopic()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	group = s.NewGroup("test")
-	topic = group.NewTopic("test1")
+	topic = group.NewTopic()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -516,12 +515,12 @@ func TestClient_OnNewGroup(t *testing.T) {
 	})
 
 	// Create a new group.
-	group = s.NewGroup("test")
+	group = s.NewGroup()
 
 	// Add the client to the group.
 	group.AddClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -540,7 +539,7 @@ func TestClient_OnSubToTopic(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test1")
+	topic := s.NewPublicTopic()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -556,30 +555,30 @@ func TestClient_OnSubToTopic(t *testing.T) {
 	// Subscribe to the topic.
 	c.Sub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	topic = c.NewPrivateTopic("test2")
+	topic = c.NewPrivateTopic()
 	c.Sub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	group := s.NewGroup("test3")
-	topic = group.NewTopic("test4")
+	group := s.NewGroup()
+	topic = group.NewTopic()
 	group.AddClient(c)
 
 	c.Sub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -603,7 +602,7 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test1")
+	topic := s.NewPublicTopic()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -619,39 +618,39 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 	// Remove the topic.
 	s.RemovePublicTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	topic = c.NewPrivateTopic("test2")
+	topic = c.NewPrivateTopic()
 	c.RemovePrivateTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	group := s.NewGroup("test3")
-	topic = group.NewTopic("test4")
+	group := s.NewGroup()
+	topic = group.NewTopic()
 	group.AddClient(c)
 	group.RemoveTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
 		t.Errorf("Expected 3, got %d", counter)
 	}
 
-	topic = group.NewTopic("test5")
+	topic = group.NewTopic()
 	group.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 4 {
@@ -664,11 +663,11 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 
 
 	var topics []*Topic
-	topics = append(topics, s.NewPublicTopic("test7"))
-	topics = append(topics, c.NewPrivateTopic("test8"))
-	group = s.NewGroup("test9")
+	topics = append(topics, s.NewPublicTopic())
+	topics = append(topics, c.NewPrivateTopic())
+	group = s.NewGroup()
 	group.AddClient(c)
-	topics = append(topics, group.NewTopic("test9"))
+	topics = append(topics, group.NewTopic())
 
 	// Event
 	c.OnRemoveTopic.Listen(func(top *Topic) {
@@ -681,7 +680,7 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -701,7 +700,7 @@ func TestClient_OnRemovePublicTopic(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test")
+	topic := s.NewPublicTopic()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -717,7 +716,7 @@ func TestClient_OnRemovePublicTopic(t *testing.T) {
 	// Remove the topic.
 	s.RemovePublicTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -726,15 +725,15 @@ func TestClient_OnRemovePublicTopic(t *testing.T) {
 
 
 
-	topic = s.NewPublicTopic("test2")
-	c.NewPrivateTopic("test3")
-	group := s.NewGroup("test4")
+	topic = s.NewPublicTopic()
+	c.NewPrivateTopic()
+	group := s.NewGroup()
 	group.AddClient(c)
-	group.NewTopic("test4")
+	group.NewTopic()
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -755,7 +754,7 @@ func TestClient_OnRemovePrivateTopic(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new private topic.
-	topic := c.NewPrivateTopic("test")
+	topic := c.NewPrivateTopic()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -771,22 +770,22 @@ func TestClient_OnRemovePrivateTopic(t *testing.T) {
 	// Remove the topic.
 	c.RemovePrivateTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	s.NewPublicTopic("test2")
-	topic = c.NewPrivateTopic("test3")
-	group := s.NewGroup("test4")
+	s.NewPublicTopic()
+	topic = c.NewPrivateTopic()
+	group := s.NewGroup()
 	group.AddClient(c)
-	group.NewTopic("test4")
+	group.NewTopic()
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -808,13 +807,13 @@ func TestClient_OnRemoveGroupTopic(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new group.
-	group := s.NewGroup("test")
+	group := s.NewGroup()
 
 	// Add the client to the group.
 	group.AddClient(c)
 
 	// Create a new group topic.
-	topic := group.NewTopic("test")
+	topic := group.NewTopic()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -833,45 +832,45 @@ func TestClient_OnRemoveGroupTopic(t *testing.T) {
 	// Remove the topic.
 	group.RemoveTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	topic = group.NewTopic("test2")
+	topic = group.NewTopic()
 	group.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	group = s.NewGroup("test3")
+	group = s.NewGroup()
 	group.AddClient(c)
-	topic = group.NewTopic("test4")
+	topic = group.NewTopic()
 
 	s.RemoveGroup(group)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
 		t.Errorf("Expected 3, got %d", counter)
 	}
 
-	s.NewPublicTopic("test5")
-	c.NewPrivateTopic("test6")
-	group = s.NewGroup("test7")
+	s.NewPublicTopic()
+	c.NewPrivateTopic()
+	group = s.NewGroup()
 	group.AddClient(c)
-	topic = group.NewTopic("test8")
+	topic = group.NewTopic()
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 4 {
@@ -892,7 +891,7 @@ func TestClient_OnRemoveGroup(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new group.
-	group := s.NewGroup("test")
+	group := s.NewGroup()
 
 	// Add the client to the group.
 	group.AddClient(c)
@@ -911,31 +910,31 @@ func TestClient_OnRemoveGroup(t *testing.T) {
 	// Remove the group.
 	s.RemoveGroup(group)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	group = s.NewGroup("test2")
+	group = s.NewGroup()
 	group.AddClient(c)
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	group = s.NewGroup("test5")
+	group = s.NewGroup()
 	group.AddClient(c)
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -960,7 +959,7 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 	c := s.NewClient()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test")
+	topic := s.NewPublicTopic()
 
 	// Subscribe to the topic.
 	c.Sub(topic)
@@ -979,7 +978,7 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 	// Unsubscribe from the topic.
 	c.Unsub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -989,61 +988,61 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 	c.Sub(topic)
 	s.RemovePublicTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	topic = c.NewPrivateTopic("test")
+	topic = c.NewPrivateTopic()
 
 	c.Sub(topic)
 	c.RemovePrivateTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
 		t.Errorf("Expected 3, got %d", counter)
 	}
 
-	group := s.NewGroup("test")
-	topic = group.NewTopic("test")
+	group := s.NewGroup()
+	topic = group.NewTopic()
 	group.AddClient(c)
 
 	c.Sub(topic)
 	group.RemoveTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 4 {
 		t.Errorf("Expected 4, got %d", counter)
 	}
 
-	group = s.NewGroup("test")
-	topic = group.NewTopic("test")
+	group = s.NewGroup()
+	topic = group.NewTopic()
 	group.AddClient(c)
 	c.Sub(topic)
 
 	group.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 5 {
 		t.Errorf("Expected 5, got %d", counter)
 	}
 
-	group = s.NewGroup("test")
-	topic = group.NewTopic("test")
+	group = s.NewGroup()
+	topic = group.NewTopic()
 	group.AddClient(c)
 	c.Sub(topic)
 
 	s.RemoveGroup(group)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 6 {
@@ -1058,11 +1057,11 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 	counter = 0
 
 	var topics []*Topic
-	topics = append(topics, s.NewPublicTopic("test"))
-	topics = append(topics, c.NewPrivateTopic("test"))
-	group = s.NewGroup("test")
+	topics = append(topics, s.NewPublicTopic())
+	topics = append(topics, c.NewPrivateTopic())
+	group = s.NewGroup()
 	group.AddClient(c)
-	topics = append(topics, group.NewTopic("test"))
+	topics = append(topics, group.NewTopic())
 
 	// Sub to all topics
 	for _, t := range topics {
@@ -1084,7 +1083,7 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -1105,7 +1104,7 @@ func TestGroup_OnNewClient(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new group.
-	g := s.NewGroup("test")
+	g := s.NewGroup()
 
 	// Create a new client.
 	c := s.NewClient()
@@ -1124,7 +1123,7 @@ func TestGroup_OnNewClient(t *testing.T) {
 	// Add the client to the group.
 	g.AddClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1140,7 +1139,7 @@ func TestGroup_OnNewGroupTopic(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new group.
-	g := s.NewGroup("test")
+	g := s.NewGroup()
 
 	var topic *Topic
 
@@ -1156,9 +1155,9 @@ func TestGroup_OnNewGroupTopic(t *testing.T) {
 	})
 
 	// Create a new group topic.
-	topic = g.NewTopic("test")
+	topic = g.NewTopic()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1176,7 +1175,7 @@ func TestGroup_OnRemoveClient(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new group.
-	g := s.NewGroup("test")
+	g := s.NewGroup()
 
 	// Create a new client.
 	c := s.NewClient()
@@ -1198,7 +1197,7 @@ func TestGroup_OnRemoveClient(t *testing.T) {
 	// Remove the client from the group.
 	g.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1209,7 +1208,7 @@ func TestGroup_OnRemoveClient(t *testing.T) {
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -1221,7 +1220,7 @@ func TestGroup_OnRemoveClient(t *testing.T) {
 
 	s.RemoveGroup(g)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -1238,10 +1237,10 @@ func TestGroup_OnRemoveGroupTopic(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new group.
-	g := s.NewGroup("test")
+	g := s.NewGroup()
 
 	// Create a new group topic.
-	topic := g.NewTopic("test1")
+	topic := g.NewTopic()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -1257,18 +1256,18 @@ func TestGroup_OnRemoveGroupTopic(t *testing.T) {
 	// Remove the topic.
 	g.RemoveTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	topic = g.NewTopic("test2")
+	topic = g.NewTopic()
 
 	s.RemoveGroup(g)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -1289,7 +1288,7 @@ func TestTopic_OnNewClient(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test")
+	topic := s.NewPublicTopic()
 
 	var c *Client
 
@@ -1307,7 +1306,7 @@ func TestTopic_OnNewClient(t *testing.T) {
 	// Create a new client.
 	c = s.NewClient()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1320,8 +1319,8 @@ func TestTopic_OnNewClient(t *testing.T) {
 
 
 	// Create a new group.
-	group := s.NewGroup("test2")
-	topic = group.NewTopic("test2")
+	group := s.NewGroup()
+	topic = group.NewTopic()
 
 	// Event
 	topic.OnNewClient.Listen(func(cl *Client) {
@@ -1335,7 +1334,7 @@ func TestTopic_OnNewClient(t *testing.T) {
 	c = s.NewClient()
 	group.AddClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1352,7 +1351,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test")
+	topic := s.NewPublicTopic()
 
 	// Create a new client.
 	c := s.NewClient()
@@ -1370,7 +1369,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 
 	c.Sub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1384,7 +1383,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	c = s.NewClient()
 
 	// Create a new private topic.
-	topic = c.NewPrivateTopic("test2")
+	topic = c.NewPrivateTopic()
 
 	// Event
 	topic.OnNewSubOfClient.Listen(func(cl *Client) {
@@ -1396,7 +1395,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 
 	c.Sub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1409,8 +1408,8 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 
 
 	// Create a new group.
-	group := s.NewGroup("test3")
-	topic = group.NewTopic("test3")
+	group := s.NewGroup()
+	topic = group.NewTopic()
 
 	c = s.NewClient()
 	group.AddClient(c)
@@ -1425,7 +1424,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 
 	c.Sub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1453,7 +1452,7 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test1")
+	topic := s.NewPublicTopic()
 
 	// Create a new client.
 	c := s.NewClient()
@@ -1476,7 +1475,7 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 	// Remove public topic
 	s.RemovePublicTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1485,11 +1484,11 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 
 	topic.OnRemoveClient.Remove(id)
 
-	topic = c.NewPrivateTopic("test2")
+	topic = c.NewPrivateTopic()
 	id = helperfunc(topic)
 	c.RemovePrivateTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -1498,14 +1497,14 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 
 	topic.OnRemoveClient.Remove(id)
 
-	group := s.NewGroup("test3")
-	topic = group.NewTopic("test3")
+	group := s.NewGroup()
+	topic = group.NewTopic()
 	id = helperfunc(topic)
 	group.AddClient(c)
 
 	group.RemoveTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -1514,11 +1513,11 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 
 	topic.OnRemoveClient.Remove(id)
 
-	topic = group.NewTopic("test4")
+	topic = group.NewTopic()
 	id = helperfunc(topic)
 	group.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 4 {
@@ -1528,7 +1527,7 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 	group.AddClient(c)
 	s.RemoveGroup(group)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 5 {
@@ -1537,12 +1536,12 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 
 	topic.OnRemoveClient.Remove(id)
 
-	topic = s.NewPublicTopic("test5")
+	topic = s.NewPublicTopic()
 	helperfunc(topic)
 
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 6 {
@@ -1564,7 +1563,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 	s := NewSSEPubSubService()
 
 	// Create a new public topic.
-	topic := s.NewPublicTopic("test0")
+	topic := s.NewPublicTopic()
 
 	// Create a new client.
 	c := s.NewClient()
@@ -1590,7 +1589,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 	// Unsubscribe from the topic.
 	c.Unsub(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 1 {
@@ -1599,12 +1598,12 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 
 	topic.OnUnsubOfClient.Remove(id)
 
-	topic = s.NewPublicTopic("test1")
+	topic = s.NewPublicTopic()
 	id = helperfunc(topic)
 	c.Sub(topic)
 	s.RemovePublicTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 2 {
@@ -1613,12 +1612,12 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 
 	topic.OnUnsubOfClient.Remove(id)
 
-	topic = c.NewPrivateTopic("test2")
+	topic = c.NewPrivateTopic()
 	id = helperfunc(topic)
 	c.Sub(topic)
 	c.RemovePrivateTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 3 {
@@ -1627,15 +1626,15 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 
 	topic.OnUnsubOfClient.Remove(id)
 
-	group := s.NewGroup("test3")
-	topic = group.NewTopic("test3")
+	group := s.NewGroup()
+	topic = group.NewTopic()
 	id = helperfunc(topic)
 	group.AddClient(c)
 
 	c.Sub(topic)
 	group.RemoveTopic(topic)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 4 {
@@ -1644,12 +1643,12 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 
 	topic.OnUnsubOfClient.Remove(id)
 
-	topic = group.NewTopic("test4")
+	topic = group.NewTopic()
 	c.Sub(topic)
 	id = helperfunc(topic)
 	group.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 5 {
@@ -1660,7 +1659,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 	c.Sub(topic)
 	s.RemoveGroup(group)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 6 {
@@ -1669,13 +1668,13 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 
 	topic.OnUnsubOfClient.Remove(id)
 
-	topic = s.NewPublicTopic("test5")
+	topic = s.NewPublicTopic()
 	helperfunc(topic)
 
 	c.Sub(topic)
 	s.RemoveClient(c)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check if the event was triggered.
 	if counter != 7 {

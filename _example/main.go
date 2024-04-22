@@ -5,7 +5,8 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"github.com/bigbluebutton-bot/pubsub-sse"
+
+	pubsubsse "github.com/bigbluebutton-bot/pubsub-sse"
 )
 
 func main() {
@@ -34,10 +35,10 @@ func main() {
 	// // Create a public topic
 	// pubTopic := ssePubSub.NewPublicTopic("server/status")
 
-	// // Get topic by name. 3 ways to get a public topic:
-	// pubTopic, _ = ssePubSub.GetPublicTopicByName("server/status")
-	// pubTopic, _ = client.GetTopicByName("server/status")
-	// pubTopic, _ = client.GetPublicTopicByName("server/status")
+	// // Get topic by ID. 3 ways to get a public topic:
+	// pubTopic, _ = ssePubSub.GetPublicTopicByID("server/status")
+	// pubTopic, _ = client.GetTopicByID("server/status")
+	// pubTopic, _ = client.GetPublicTopicByID("server/status")
 
 	// // Subscribe to the topic
 	// client.Sub(pubTopic)
@@ -54,9 +55,9 @@ func main() {
 	// // Create a private topic
 	// privTopic := client.NewPrivateTopic("test/server")
 
-	// // Get topic by name. 2 ways to get a private topic:
-	// privTopic, _ = client.GetTopicByName("test/server")
-	// privTopic, _ = client.GetPrivateTopicByName("test/server")
+	// // Get topic by ID. 2 ways to get a private topic:
+	// privTopic, _ = client.GetTopicByID("test/server")
+	// privTopic, _ = client.GetPrivateTopicByID("test/server")
 
 	// // Subscribe to the topic
 	// client.Sub(privTopic)
@@ -72,20 +73,20 @@ func main() {
 
 	// // Create a group
 	// group := ssePubSub.NewGroup("testgroup")
-	// group, _ = ssePubSub.GetGroupByName("testgroup")
+	// group, _ = ssePubSub.GetGroupByID("testgroup")
 
 	// // Add client to group
 	// group.AddClient(client)
 
 	// // Get group from client
-	// group, _ = client.GetGroupByName("testgroup")
+	// group, _ = client.GetGroupByID("testgroup")
 
 	// // Create a group topic
 	// groupTopic := group.NewTopic("test/group")
 
-	// // Get topic by name. 2 ways to get a group topic:
-	// groupTopic, _ = group.GetTopicByName("test/group")
-	// groupTopic, _ = client.GetTopicByName("test/group")
+	// // Get topic by ID. 2 ways to get a group topic:
+	// groupTopic, _ = group.GetTopicByID("test/group")
+	// groupTopic, _ = client.GetTopicByID("test/group")
 
 	// // Subscribe to the topic
 	// client.Sub(groupTopic)
@@ -109,7 +110,7 @@ func main() {
 	// ssePubSub.RemoveClient(client)
 
 	// Create Public topic PUBLIC
-	pubTopic := ssePubSub.NewPublicTopic("PUBLIC")
+	pubTopic := ssePubSub.NewPublicTopic()
 
 	// If client is created
 	ssePubSub.OnNewClient.Listen(func(c *pubsubsse.Client) {

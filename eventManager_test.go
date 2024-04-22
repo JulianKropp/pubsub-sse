@@ -38,7 +38,7 @@ func TestEventManager_Listen(t *testing.T) {
 	}
 
 	manager.Emit(new(int))
-	time.Sleep(2 * time.Second)
+	time.Sleep(200 * time.Millisecond)
 	if !received {
 		t.Errorf("Listener was not triggered by Emit")
 	}
@@ -91,7 +91,7 @@ func TestEventManager_Emit(t *testing.T) {
 	manager.Listen(listener)
 	item := 42
 	manager.Emit(&item)
-	time.Sleep(2 * time.Second)
+	time.Sleep(200 * time.Millisecond)
 	if received != item {
 		t.Errorf("Emit should pass the correct item to the listener")
 	}

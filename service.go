@@ -15,12 +15,12 @@ type SSEPubSubService struct {
 	lock sync.Mutex
 
 	// Events:
-	OnNewClient *eventManager[*Client]
-	OnNewPublicTopic *eventManager[*Topic]
-	OnNewGroup *eventManager[*Group]
-	OnRemoveClient *eventManager[*Client]
+	OnNewClient         *eventManager[*Client]
+	OnNewPublicTopic    *eventManager[*Topic]
+	OnNewGroup          *eventManager[*Group]
+	OnRemoveClient      *eventManager[*Client]
 	OnRemovePublicTopic *eventManager[*Topic]
-	OnRemoveGroup *eventManager[*Group]
+	OnRemoveGroup       *eventManager[*Group]
 }
 
 // NewSSEPubSub creates a new sSEPubSubService instance.
@@ -32,12 +32,12 @@ func NewSSEPubSubService() *SSEPubSubService {
 
 		lock: sync.Mutex{},
 
-		OnNewClient: newEventManager[*Client](),
-		OnNewPublicTopic: newEventManager[*Topic](),
-		OnNewGroup: newEventManager[*Group](),
-		OnRemoveClient: newEventManager[*Client](),
+		OnNewClient:         newEventManager[*Client](),
+		OnNewPublicTopic:    newEventManager[*Topic](),
+		OnNewGroup:          newEventManager[*Group](),
+		OnRemoveClient:      newEventManager[*Client](),
 		OnRemovePublicTopic: newEventManager[*Topic](),
-		OnRemoveGroup: newEventManager[*Group](),
+		OnRemoveGroup:       newEventManager[*Group](),
 	}
 }
 
@@ -69,7 +69,7 @@ func (s *SSEPubSubService) RemoveClient(c *Client) {
 	alltopics := c.GetAllTopics()
 	for _, t := range alltopics {
 		if err := c.Unsub(t); err != nil {
-			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetName(), err)
+			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetID(), err)
 		}
 	}
 
@@ -109,18 +109,13 @@ func (s *SSEPubSubService) RemoveClient(c *Client) {
 // 0. Check if group already exists, return it if it does
 // 1. Create a new group
 // 2. Add the group to the sSEPubSubService
-func (s *SSEPubSubService) NewGroup(name string) *Group {
-	// Check if group already exists, return it if it does
-	if g, ok := s.GetGroupByName(name); ok {
-		return g
-	}
-
+func (s *SSEPubSubService) NewGroup() *Group {
 	// Create a new group
-	g := newGroup(name)
+	g := newGroup()
 
 	// Add the group to the sSEPubSubService
 	s.lock.Lock()
-	s.groups[g.GetName()] = g
+	s.groups[g.GetID()] = g
 	s.lock.Unlock()
 
 	// Emit event
@@ -137,7 +132,7 @@ func (s *SSEPubSubService) NewGroup(name string) *Group {
 func (s *SSEPubSubService) RemoveGroup(g *Group) {
 	// Check if group exists in sSEPubSubService
 	checkIfExist := func() bool {
-		if group, ok := s.GetGroupByName(g.GetName()); ok {
+		if group, ok := s.GetGroupByID(g.GetID()); ok {
 			if group == g {
 				return true
 			}
@@ -145,7 +140,7 @@ func (s *SSEPubSubService) RemoveGroup(g *Group) {
 		return false
 	}
 	if !checkIfExist() {
-		log.Errorf("Group %s does not exist in sSEPubSubService", g.GetName())
+		log.Errorf("Group %s does not exist in sSEPubSubService", g.GetID())
 		return
 	}
 
@@ -161,7 +156,7 @@ func (s *SSEPubSubService) RemoveGroup(g *Group) {
 
 	// Remove group from sSEPubSubService
 	s.lock.Lock()
-	delete(s.groups, g.GetName())
+	delete(s.groups, g.GetID())
 	s.lock.Unlock()
 
 	// Emit event
@@ -182,12 +177,12 @@ func (s *SSEPubSubService) GetGroups() map[string]*Group {
 	return newmap
 }
 
-// Get group by name
-func (s *SSEPubSubService) GetGroupByName(name string) (*Group, bool) {
+// Get group by ID
+func (s *SSEPubSubService) GetGroupByID(id string) (*Group, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	g, ok := s.groups[name]
+	g, ok := s.groups[id]
 	return g, ok
 }
 
@@ -219,16 +214,11 @@ func (s *SSEPubSubService) GetClientByID(id string) (*Client, bool) {
 // 1. Create a new public topic
 // 2. Add the topic to the sSEPubSubService
 // 3. Inform all clients about the new topic
-func (s *SSEPubSubService) NewPublicTopic(name string) *Topic {
-	// Check if topic already exists, return it if it does
-	if t, ok := s.GetPublicTopicByName(name); ok {
-		return t
-	}
-
+func (s *SSEPubSubService) NewPublicTopic() *Topic {
 	// Create a new public topic
-	t := newTopic(name, TPublic)
+	t := newTopic(TPublic)
 	s.lock.Lock()
-	s.publicTopics[t.GetName()] = t
+	s.publicTopics[t.GetID()] = t
 	s.lock.Unlock()
 
 	// Inform all clients about the new topic
@@ -257,13 +247,13 @@ func (s *SSEPubSubService) NewPublicTopic(name string) *Topic {
 func (s *SSEPubSubService) RemovePublicTopic(t *Topic) {
 	// Check if topic is public
 	if t.GetType() != string(TPublic) {
-		log.Errorf("Topic %s is not public", t.GetName())
+		log.Errorf("Topic %s is not public", t.GetID())
 		return
 	}
 
 	// Check if topic exists in sSEPubSubService
 	checkIfExist := func() bool {
-		if top, ok := s.GetPublicTopicByName(t.GetName()); ok {
+		if top, ok := s.GetPublicTopicByID(t.GetID()); ok {
 			if top == t {
 				return true
 			}
@@ -271,20 +261,20 @@ func (s *SSEPubSubService) RemovePublicTopic(t *Topic) {
 		return false
 	}
 	if !checkIfExist() {
-		log.Errorf("Topic %s does not exist in sSEPubSubService", t.GetName())
+		log.Errorf("Topic %s does not exist in sSEPubSubService", t.GetID())
 		return
 	}
 
 	// Remove this topic from all clients
 	for _, c := range t.GetClients() {
 		if err := c.Unsub(t); err != nil {
-			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetName(), err)
+			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetID(), err)
 		}
 	}
 
 	// Remove topic from sSEPubSubService
 	s.lock.Lock()
-	delete(s.publicTopics, t.GetName())
+	delete(s.publicTopics, t.GetID())
 	s.lock.Unlock()
 
 	// Inform all clients about the removed topic by sending the new topic list
@@ -292,7 +282,7 @@ func (s *SSEPubSubService) RemovePublicTopic(t *Topic) {
 		if err := c.sendTopicList(); err != nil {
 			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
 		}
-		
+
 		// Emit event
 		c.OnRemoveTopic.Emit(t)
 		t.OnRemoveClient.Emit(c)
@@ -316,11 +306,11 @@ func (s *SSEPubSubService) GetPublicTopics() map[string]*Topic {
 	return newmap
 }
 
-// Get public topic by name
-func (s *SSEPubSubService) GetPublicTopicByName(name string) (*Topic, bool) {
+// Get public topic by ID
+func (s *SSEPubSubService) GetPublicTopicByID(id string) (*Topic, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	t, ok := s.publicTopics[name]
+	t, ok := s.publicTopics[id]
 	return t, ok
 }

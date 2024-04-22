@@ -24,14 +24,11 @@ func AddClient(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 func AddPublicTopic(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// GET clientID and topic from request body
-	topic := r.URL.Query().Get("topic")
-
 	// Create a new public topic
-	t := s.NewPublicTopic(topic)
+	t := s.NewPublicTopic()
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "topic_name": t.GetName()})
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "topic_id": t.GetID()})
 }
 
 // AddPrivateTopic handles HTTP requests for adding a new private topic.
@@ -40,7 +37,6 @@ func AddPrivateTopic(s *SSEPubSubService, w http.ResponseWriter, r *http.Request
 
 	// GET clientID and topic from request body
 	clientID := r.URL.Query().Get("client_id")
-	topic := r.URL.Query().Get("topic")
 
 	// Get the client
 	client, ok := s.GetClientByID(clientID)
@@ -52,10 +48,10 @@ func AddPrivateTopic(s *SSEPubSubService, w http.ResponseWriter, r *http.Request
 	}
 
 	// Create a new private topic
-	t := client.NewPrivateTopic(topic)
+	t := client.NewPrivateTopic()
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "topic_name": t.GetName()})
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "topic_id": t.GetID()})
 }
 
 // Subscribe handles HTTP requests for client subscriptions.
@@ -76,7 +72,7 @@ func Subscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the topic
-	t, ok := client.GetTopicByName(topic)
+	t, ok := client.GetTopicByID(topic)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "topic not found"})
@@ -112,7 +108,7 @@ func Unsubscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the topic
-	t, ok := client.GetTopicByName(topic)
+	t, ok := client.GetTopicByID(topic)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "topic not found"})

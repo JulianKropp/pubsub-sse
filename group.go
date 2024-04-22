@@ -9,13 +9,11 @@ import (
 
 // Group is a collection of topics.
 type Group struct {
-	// Name is the name of the group.
-	name string
 	id   string
 
 	lock *sync.Mutex
 
-	// Topics is a map of topic names to topics.
+	// Topics is a map of topic IDs to topics.
 	topics map[string]*Topic
 
 	// Clients is a map of client IDs to clients.
@@ -34,9 +32,8 @@ type GroupTopic struct {
 	Group *Group
 }
 
-func newGroup(name string) *Group {
+func newGroup() *Group {
 	return &Group{
-		name: name,
 		id:   uuid.New().String(),
 
 		lock: &sync.Mutex{},
@@ -49,14 +46,6 @@ func newGroup(name string) *Group {
 		OnRemoveClient: newEventManager[*Client](),	
 		OnRemoveGroupTopic: newEventManager[*Topic](),
 	}
-}
-
-// GetName returns the name of the group.
-func (g *Group) GetName() string {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-
-	return g.name
 }
 
 // GetID returns the ID of the group.
@@ -82,12 +71,12 @@ func (g *Group) GetTopics() map[string]*Topic {
 	return newmap
 }
 
-// Get topic by name
-func (g *Group) GetTopicByName(name string) (*Topic, bool) {
+// Get topic by id
+func (g *Group) GetTopicByID(id string) (*Topic, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	t, ok := g.topics[name]
+	t, ok := g.topics[id]
 	return t, ok
 }
 
@@ -119,16 +108,12 @@ func (g *Group) GetClientByID(id string) (*Client, bool) {
 // 1. Check if topic already exists, return it if it does
 // 2. Add the topic to the group
 // 3. Inform all clients about the new topic
-func (g *Group) NewTopic(name string) *Topic {
-	// Check if the topic already exists and return it if it does
-	if t, ok := g.GetTopicByName(name); ok {
-		return t
-	}
+func (g *Group) NewTopic() *Topic {
 
 	// Create the topic
-	t := newTopic(name, TGroup)
+	t := newTopic(TGroup)
 	g.lock.Lock()
-	g.topics[name] = t
+	g.topics[t.GetID()] = t
 	g.lock.Unlock()
 
 	// Inform all clients about the new topic
@@ -168,7 +153,7 @@ func (g *Group) RemoveTopic(t *Topic) {
 
 	// Check if topic exists in sSEPubSubService
 	checkIfExist := func() bool {
-		if top, ok := g.GetTopicByName(t.GetName()); ok {
+		if top, ok := g.GetTopicByID(t.GetID()); ok {
 			if top == t {
 				return true
 			}
@@ -176,7 +161,7 @@ func (g *Group) RemoveTopic(t *Topic) {
 		return false
 	}
 	if !checkIfExist() {
-		log.Errorf("Topic %s does not exist in group", t.GetName())
+		log.Errorf("Topic %s does not exist in group", t.GetID())
 		return
 	}
 
@@ -189,7 +174,7 @@ func (g *Group) RemoveTopic(t *Topic) {
 
 	// Remove topic from the group
 	g.lock.Lock()
-	delete(g.topics, t.GetName())
+	delete(g.topics, t.GetID())
 	g.lock.Unlock()
 
 	// Inform all clients about the removed topic

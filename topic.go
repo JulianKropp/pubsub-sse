@@ -18,7 +18,6 @@ const (
 
 // Topic represents a messaging Topic in the SSE pub-sub system.
 type Topic struct {
-	name    string
 	id      string
 	ttype   topicType
 	clients map[string]*Client
@@ -33,9 +32,8 @@ type Topic struct {
 }
 
 // Create a new topic
-func newTopic(name string, ttype topicType) *Topic {
+func newTopic(ttype topicType) *Topic {
 	return &Topic{
-		name:    name,
 		id:      uuid.New().String(),
 		ttype:   ttype,
 		clients: make(map[string]*Client),
@@ -47,14 +45,6 @@ func newTopic(name string, ttype topicType) *Topic {
 		OnRemoveClient: newEventManager[*Client](),
 		OnUnsubOfClient: newEventManager[*Client](),
 	}
-}
-
-// Get Name
-func (t *Topic) GetName() string {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
-	return t.name
 }
 
 // Get ID
@@ -128,7 +118,7 @@ type eventDataSys struct {
 }
 
 type eventDataSysList struct {
-	Name string `json:"name"`
+	ID string `json:"id"`
 	Type string `json:"type,omitempty"` // topics, subscribed, unsubscribed
 }
 
@@ -144,7 +134,7 @@ func (t *Topic) Pub(msg interface{}) error {
 		Updates: []eventDataUpdates{},
 	}
 	u := eventDataUpdates{
-		Topic: t.GetName(),
+		Topic: t.GetID(),
 		Data:  msg,
 	}
 	fulldata.Updates = append(fulldata.Updates, u)
@@ -153,7 +143,7 @@ func (t *Topic) Pub(msg interface{}) error {
 	for _, c := range t.GetClients() {
 		err := c.send(fulldata) // ignore error. Fire and forget.
 		if err != nil {
-			log.Errorf("[T:%s]: Error sending data to client: %s", t.GetName(), err.Error())
+			log.Errorf("[T:%s]: Error sending data to client: %s", t.GetID(), err.Error())
 		}
 	}
 

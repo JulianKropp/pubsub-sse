@@ -63,10 +63,10 @@ func main() {
 	// Create a public topic
 	pubTopic := ssePubSub.NewPublicTopic("server/status")
 
-	// Get topic by name. 3 ways to get a public topic:
-	pubTopic, _ = ssePubSub.GetPublicTopicByName("server/status")
-	pubTopic, _ = client.GetTopicByName("server/status")
-	pubTopic, _ = client.GetPublicTopicByName("server/status")
+	// Get topic by ID. 3 ways to get a public topic:
+	pubTopic, _ = ssePubSub.GetPublicTopicByID("server/status")
+	pubTopic, _ = client.GetTopicByID("server/status")
+	pubTopic, _ = client.GetPublicTopicByID("server/status")
 
 	// Subscribe to the topic
 	client.Sub(pubTopic)
@@ -83,9 +83,9 @@ func main() {
 	// Create a private topic
 	privTopic := client.NewPrivateTopic("test/server")
 
-	// Get topic by name. 2 ways to get a private topic:
-	privTopic, _ = client.GetTopicByName("test/server")
-	privTopic, _ = client.GetPrivateTopicByName("test/server")
+	// Get topic by ID. 2 ways to get a private topic:
+	privTopic, _ = client.GetTopicByID("test/server")
+	privTopic, _ = client.GetPrivateTopicByID("test/server")
 
 	// Subscribe to the topic
 	client.Sub(privTopic)
@@ -108,21 +108,21 @@ func main() {
 
 	// // Create a group
 	// group := ssePubSub.NewGroup("testgroup")
-	// group, _ = ssePubSub.GetGroupByName("testgroup")
+	// group, _ = ssePubSub.GetGroupByID("testgroup")
 
 	// // Add client to group
 	// group.AddClient(client)
 
 	// // Get group from client
-	// group, _ = client.GetGroupByName("testgroup")
+	// group, _ = client.GetGroupByID("testgroup")
 
 	// // Create a group topic
 	// groupTopic := group.NewTopic("test/group")
 
-	// // Get topic by name. 3 ways to get a group topic:
-	// groupTopic, _ = group.GetTopicByName("test/group")
-	// groupTopic, _ = client.GetTopicByName("test/group")
-	// groupTopic, _ = client.GetGroupTopicByName("test/group")
+	// // Get topic by ID. 3 ways to get a group topic:
+	// groupTopic, _ = group.GetTopicByID("test/group")
+	// groupTopic, _ = client.GetTopicByID("test/group")
+	// groupTopic, _ = client.GetGroupTopicByID("test/group")
 
 	// // Subscribe to the topic
 	// client.Sub(groupTopic)
@@ -176,17 +176,17 @@ class client {
 +GetID(): string
 +GetStatus(): status
 +GetPublicTopics(): map[string]*topic
-+GetPublicTopicByName(name string): *topic, bool
++GetPublicTopicByID(ID string): *topic, bool
 +GetPrivateTopics(): map[string]*topic
-+GetPrivateTopicByName(name string): *topic, bool
++GetPrivateTopicByID(ID string): *topic, bool
 -addGroup(g *group)
 -removeGroup(g *group)
 +GetGroups(): map[string]*group
-+GetGroupByName(name string): *group, bool
++GetGroupByID(ID string): *group, bool
 +GetAllTopics(): map[string]*topic
-+GetTopicByName(name string): *topic, bool
++GetTopicByID(ID string): *topic, bool
 +GetSubscribedTopics(): map[string]*topic
-+NewPrivateTopic(name string): *topic
++NewPrivateTopic(ID string): *topic
 +RemovePrivateTopic(t *topic)
 +Sub(topic *topic): error
 +Unsub(topic *topic): error
@@ -200,18 +200,17 @@ class client {
 +Start(ctx Context)
 }
 class group {
--name: string
+-ID: string
 -id: string
 -lock: *Mutex
 -topics: map[string]*topic
 -clients: map[string]*client
-+GetName(): string
 +GetID(): string
 +GetTopics(): map[string]*topic
-+GetTopicByName(name string): *topic, bool
++GetTopicByID(ID string): *topic, bool
 +GetClients(): map[string]*client
 +GetClientByID(id string): *client, bool
-+NewTopic(name string): *topic
++NewTopic(ID string): *topic
 +RemoveTopic(t *topic)
 +AddClient(c *client)
 +RemoveClient(c *client)
@@ -223,28 +222,27 @@ class sSEPubSubService {
 -lock: Mutex
 +NewClient(): *client
 +RemoveClient(c *client)
-+NewGroup(name string): *group
++NewGroup(ID string): *group
 +RemoveGroup(g *group)
 +GetGroups(): map[string]*group
-+GetGroupByName(name string): *group, bool
++GetGroupByID(ID string): *group, bool
 +GetClients(): map[string]*client
 +GetClientByID(id string): *client, bool
-+NewPublicTopic(name string): *topic
++NewPublicTopic(ID string): *topic
 +RemovePublicTopic(t *topic)
 +GetPublicTopics(): map[string]*topic
-+GetPublicTopicByName(name string): *topic, bool
++GetPublicTopicByID(ID string): *topic, bool
 }
 class topicType {
 
 
 }
 class topic {
--name: string
+-ID: string
 -id: string
 -ttype: topicType
 -clients: map[string]*client
 -lock: Mutex
-+GetName(): string
 +GetID(): string
 +GetType(): string
 -addClient(c *client)
@@ -269,7 +267,7 @@ class eventDataSys {
 
 }
 class eventDataSysList {
-+Name: string
++ID: string
 +Type: string
 
 }
@@ -306,14 +304,14 @@ The structure of the data received by the client is divided into two main parts:
      a. 'topics': Lists all available topics (public, private, and group).
      b. 'subscribed': Event which indicates topics the client has recently subscribed to.
      c. 'unsubscribed':  Event which indicates topics the client has recently unsubscribed from.
-   - Each topic in these lists includes its 'name'.
+   - Each topic in these lists includes its 'ID'.
    - The 'topics' list also includes the 'type' of each topic, which can be 'public', 'private', or 'group'.
 
 **2. 'updates' (Data Updates):**
    - This part contains the actual data updates for the topics the client is subscribed to.
    - It is an array of objects, each representing an update for a specific topic.
    - Each update object includes:
-     a. 'topic': The name of the topic being updated.
+     a. 'topic': The ID of the topic being updated.
      b. 'data': The new data for the topic, encapsulated in a nested JSON object.
      
 **3. Note on Topics:**
@@ -356,7 +354,7 @@ The structure of the data received by the client is divided into two main parts:
      {
        "sys": {
          "subscribed": [
-           {"name": "exampleTopic", "type": "public"}
+           {"ID": "exampleTopic", "type": "public"}
          ]
        },
        "updates": null
@@ -373,7 +371,7 @@ The structure of the data received by the client is divided into two main parts:
      {
        "sys": {
          "unsubscribed": [
-           {"name": "exampleTopic", "type": "public"}
+           {"ID": "exampleTopic", "type": "public"}
          ]
        },
        "updates": null
@@ -389,8 +387,8 @@ The structure of the data received by the client is divided into two main parts:
      {
        "sys": {
          "topics": [
-           {"name": "newTopic", "type": "public"},
-           {"name": "existingTopic", "type": "private"}
+           {"ID": "newTopic", "type": "public"},
+           {"ID": "existingTopic", "type": "private"}
            ... other existing topics
          ]
        },
@@ -410,7 +408,7 @@ The structure of the data received by the client is divided into two main parts:
            List of remaining topics after deletion
          ],
          "unsubscribed": [
-           {"name": "deletedTopic", "type": "public"}
+           {"ID": "deletedTopic", "type": "public"}
          ]
        },
        "updates": null

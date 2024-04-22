@@ -4,41 +4,6 @@ import (
 	"testing"
 )
 
-// Tests for:
-// +GetID(): string
-// +GetStatus(): status
-
-// +GetPublicTopics(): map[string]*topic
-// +GetPublicTopicByName(name string): *topic, bool
-
-// +NewPrivateTopic(name string): *topic
-// +RemovePrivateTopic(t *topic)
-// +GetPrivateTopics(): map[string]*topic
-// +GetPrivateTopicByName(name string): *topic, bool
-
-// +GetGroups(): map[string]*group
-// +GetGroupByName(name string): *group, bool
-
-// +GetAllTopics(): map[string]*topic
-// +GetTopicByName(name string): *topic, bool
-// +GetSubscribedTopics(): map[string]*topic
-
-// +Sub(topic *topic): error
-// +Unsub(topic *topic): error
-
-// +OnEvent(f onEventFunc)
-// +RemoveOnEvent()
-// +Start(ctx Context)
-
-// -send(msg interface): error
-// -sendTopicList(): error
-// -sendSubscribedTopic(topic *topic): error
-// -sendUnsubscribedTopic(topic *topic): error
-// -sendInitMSG(): error
-// -addGroup(g *group)
-// -removeGroup(g *group)
-// -stop()
-
 // -----------------------------
 //ID/Status
 // -----------------------------
@@ -48,7 +13,7 @@ func TestClient_GetID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	c := ssePubSub.NewClient()
 	if c.GetID() == "" {
-		t.Error("Client.GetID() == \"\"")
+		t.Errorf("Client.GetID() == \"\"")
 	}
 }
 
@@ -57,7 +22,7 @@ func TestClient_GetStatus(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 	if client.GetStatus() != Waiting {
-		t.Error("Client.GetStatus() != Waiting")
+		t.Errorf("Client.GetStatus() != Waiting")
 	}
 
 	// Start /event
@@ -70,7 +35,7 @@ func TestClient_GetStatus(t *testing.T) {
 	<-connected
 
 	if client.GetStatus() != Receving {
-		t.Error("Client.GetStatus() != Receving")
+		t.Errorf("Client.GetStatus() != Receving")
 	}
 }
 
@@ -83,37 +48,38 @@ func TestClient_GetPublicTopics(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 	if len(client.GetPublicTopics()) != 0 {
-		t.Error("len(client.GetPublicTopics()) != 0")
+		t.Errorf("len(client.GetPublicTopics()) != 0")
 	}
 
 	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("test")
+	pubTopic := ssePubSub.NewPublicTopic()
+	pubTopicID := pubTopic.GetID()
 
 	// Get topic
 	pubTopics := client.GetPublicTopics()
 	if len(pubTopics) != 1 {
-		t.Error("len(pubTopics) != 1")
+		t.Errorf("len(pubTopics) != 1")
 	}
-	if pubTopics["test"] != pubTopic {
-		t.Error("pubTopics[\"test\"] != pubTopic")
+	if pubTopics[pubTopicID] != pubTopic {
+		t.Errorf("pubTopics[\"%v\"] != \"%v\"", pubTopics[pubTopicID], pubTopic)
 	}
 }
 
-// TestClient_GetPublicTopicByName tests Client.GetPublicTopicByName()
-func TestClient_GetPublicTopicByName(t *testing.T) {
+// TestClient_GetPublicTopicByID tests Client.GetPublicTopicByID()
+func TestClient_GetPublicTopicByID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 
 	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("test")
+	pubTopic := ssePubSub.NewPublicTopic()
 
 	// Get topic
-	topic, ok := client.GetPublicTopicByName("test")
+	topic, ok := client.GetPublicTopicByID(pubTopic.GetID())
 	if !ok {
-		t.Error("!ok")
+		t.Errorf("!ok")
 	}
 	if topic != pubTopic {
-		t.Error("topic != pubTopic")
+		t.Errorf("topic != pubTopic")
 	}
 }
 
@@ -127,15 +93,16 @@ func TestClient_NewPrivateTopic(t *testing.T) {
 	client := ssePubSub.NewClient()
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic("test")
+	privTopic := client.NewPrivateTopic()
+	privTopicID := privTopic.GetID()
 
 	// Get topic
 	privTopics := client.GetPrivateTopics()
 	if len(privTopics) != 1 {
-		t.Error("len(privTopics) != 1")
+		t.Errorf("len(privTopics) != 1")
 	}
-	if privTopics["test"] != privTopic {
-		t.Error("privTopics[\"test\"] != privTopic")
+	if privTopics[privTopicID] != privTopic {
+		t.Errorf("privTopics[\"%v\"] != \"%v\"", privTopics[privTopicID], privTopic)
 	}
 }
 
@@ -145,7 +112,7 @@ func TestClient_RemovePrivateTopic(t *testing.T) {
 	client := ssePubSub.NewClient()
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic("test")
+	privTopic := client.NewPrivateTopic()
 
 	// Remove topic
 	client.RemovePrivateTopic(privTopic)
@@ -162,37 +129,39 @@ func TestClient_GetPrivateTopics(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 	if len(client.GetPrivateTopics()) != 0 {
-		t.Error("len(client.GetPrivateTopics()) != 0")
+		t.Errorf("len(client.GetPrivateTopics()) != 0")
 	}
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic("test")
+	privTopic := client.NewPrivateTopic()
+	privTopicID := privTopic.GetID()
 
 	// Get topic
 	privTopics := client.GetPrivateTopics()
 	if len(privTopics) != 1 {
-		t.Error("len(privTopics) != 1")
+		t.Errorf("len(privTopics) != 1")
 	}
-	if privTopics["test"] != privTopic {
-		t.Error("privTopics[\"test\"] != privTopic")
+	if privTopics[privTopicID] != privTopic {
+		t.Errorf("privTopics[\"%v\"] != \"%v\"", privTopics[privTopicID], privTopic)
 	}
 }
 
-// TestClient_GetPrivateTopicByName tests Client.GetPrivateTopicByName()
-func TestClient_GetPrivateTopicByName(t *testing.T) {
+// TestClient_GetPrivateTopicByID tests Client.GetPrivateTopicByID()
+func TestClient_GetPrivateTopicByID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic("test")
+	privTopic := client.NewPrivateTopic()
+	privTopicID := privTopic.GetID()
 
 	// Get topic
-	topic, ok := client.GetPrivateTopicByName("test")
+	topic, ok := client.GetPrivateTopicByID(privTopicID)
 	if !ok {
-		t.Error("!ok")
+		t.Errorf("!ok")
 	}
 	if topic != privTopic {
-		t.Error("topic != privTopic")
+		t.Errorf("topic != privTopic")
 	}
 }
 
@@ -205,43 +174,45 @@ func TestClient_GetGroups(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 	if len(client.GetGroups()) != 0 {
-		t.Error("len(client.GetGroups()) != 0")
+		t.Errorf("len(client.GetGroups()) != 0")
 	}
 
 	// Create a group
-	group := ssePubSub.NewGroup("test")
+	group := ssePubSub.NewGroup()
 
 	// Add client to group
 	group.AddClient(client)
+	groupID := group.GetID()
 
 	// Get group
 	groups := client.GetGroups()
 	if len(groups) != 1 {
-		t.Error("len(groups) != 1")
+		t.Errorf("len(groups) != 1")
 	}
-	if groups["test"] != group {
-		t.Error("groups[\"test\"] != group")
+	if groups[groupID] != group {
+		t.Errorf("groups[\"%v\"] != \"%v\"", groups[groupID], group)
 	}
 }
 
-// TestClient_GetGroupByName tests Client.GetGroupByName()
-func TestClient_GetGroupByName(t *testing.T) {
+// TestClient_GetGroupByID tests Client.GetGroupByID()
+func TestClient_GetGroupByID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 
 	// Create a group
-	group := ssePubSub.NewGroup("test")
+	group := ssePubSub.NewGroup()
 
 	// Add client to group
 	group.AddClient(client)
+	groupID := group.GetID()
 
 	// Get group
-	g, ok := client.GetGroupByName("test")
+	g, ok := client.GetGroupByID(groupID)
 	if !ok {
-		t.Error("!ok")
+		t.Errorf("!ok")
 	}
 	if g != group {
-		t.Error("g != group")
+		t.Errorf("g != group")
 	}
 }
 
@@ -254,75 +225,78 @@ func TestClient_GetAllTopics(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 	if len(client.GetAllTopics()) != 0 {
-		t.Error("len(client.GetAllTopics()) != 0")
+		t.Errorf("len(client.GetAllTopics()) != 0")
 	}
 
 	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("test1")
+	pubTopic := ssePubSub.NewPublicTopic()
+	pubTopicID := pubTopic.GetID()
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic("test2")
+	privTopic := client.NewPrivateTopic()
+	privTopicID := privTopic.GetID()
 
 	// Create group
-	group := ssePubSub.NewGroup("testGroup")
+	group := ssePubSub.NewGroup()
 	group.AddClient(client)
-	groupTopic := group.NewTopic("test3")
+	groupTopic := group.NewTopic()
+	groupTopicID := groupTopic.GetID()
 
 	// Get topic
 	topics := client.GetAllTopics()
 	if len(topics) != 3 {
-		t.Error("len(topics) != 3")
+		t.Errorf("%d != 3", len(topics))
 	}
-	if topics["test1"] != pubTopic {
-		t.Error("topics[\"test\"] != pubTopic")
+	if topics[pubTopicID] != pubTopic {
+		t.Errorf("topics[\"%v\"] != \"%v\"", pubTopicID, pubTopic)
 	}
-	if topics["test2"] != privTopic {
-		t.Error("topics[\"test\"] != privTopic")
+	if topics[privTopicID] != privTopic {
+		t.Errorf("topics[\"%v\"] != \"%v\"", privTopicID, privTopic)
 	}
-	if topics["test3"] != groupTopic {
-		t.Error("topics[\"test\"] != groupTopic")
+	if topics[groupTopicID] != groupTopic {
+		t.Errorf("topics[\"%v\"] != \"%v\"", groupTopicID, groupTopic)
 	}
 }
 
-// TestClient_GetTopicByName tests Client.GetTopicByName()
-func TestClient_GetTopicByName(t *testing.T) {
+// TestClient_GetTopicByID tests Client.GetTopicByID()
+func TestClient_GetTopicByID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 
 	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("test1")
+	pubTopic := ssePubSub.NewPublicTopic()
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic("test2")
+	privTopic := client.NewPrivateTopic()
 
 	// Create group
-	group := ssePubSub.NewGroup("testGroup")
+	group := ssePubSub.NewGroup()
 	group.AddClient(client)
-	groupTopic := group.NewTopic("test3")
+	groupTopic := group.NewTopic()
 
 	// Get topic
-	topic, ok := client.GetTopicByName("test1")
+	topic, ok := client.GetTopicByID(pubTopic.GetID())
 	if !ok {
-		t.Error("!ok")
+		t.Errorf("!ok")
 	}
 	if topic != pubTopic {
-		t.Error("topic != pubTopic")
+		t.Errorf("topic != pubTopic")
 	}
 
-	topic, ok = client.GetTopicByName("test2")
+	topic, ok = client.GetTopicByID(privTopic.GetID())
 	if !ok {
-		t.Error("!ok")
+		t.Errorf("!ok")
 	}
 	if topic != privTopic {
-		t.Error("topic != privTopic")
+		t.Errorf("topic != privTopic")
 	}
 
-	topic, ok = client.GetTopicByName("test3")
+	topic, ok = client.GetTopicByID(groupTopic.GetID())
 	if !ok {
-		t.Error("!ok")
+		t.Errorf("!ok")
 	}
 	if topic != groupTopic {
-		t.Error("topic != groupTopic")
+		t.Errorf("topic != groupTopic")
 	}
 }
 
@@ -331,19 +305,22 @@ func TestClient_GetSubscribedTopics(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	client := ssePubSub.NewClient()
 	if len(client.GetSubscribedTopics()) != 0 {
-		t.Error("len(client.GetSubscribedTopics()) != 0")
+		t.Errorf("len(client.GetSubscribedTopics()) != 0")
 	}
 
 	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("test1")
+	pubTopic := ssePubSub.NewPublicTopic()
+	pubTopicID := pubTopic.GetID()
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic("test2")
+	privTopic := client.NewPrivateTopic()
+	privTopicID := privTopic.GetID()
 
 	// Create group
-	group := ssePubSub.NewGroup("testGroup")
+	group := ssePubSub.NewGroup()
 	group.AddClient(client)
-	groupTopic := group.NewTopic("test3")
+	groupTopic := group.NewTopic()
+	groupTopicID := groupTopic.GetID()
 
 	// Subscribe to topics
 	client.Sub(pubTopic)
@@ -353,16 +330,16 @@ func TestClient_GetSubscribedTopics(t *testing.T) {
 	// Get topic
 	topics := client.GetSubscribedTopics()
 	if len(topics) != 3 {
-		t.Error("len(topics) != 3")
+		t.Errorf("%d != 3", len(topics))
 	}
-	if topics["test1"] != pubTopic {
-		t.Error("topics[\"test\"] != pubTopic")
+	if topics[pubTopicID] != pubTopic {
+		t.Errorf("topics[\"%v\"] != \"%v\"", pubTopicID, pubTopic)
 	}
-	if topics["test2"] != privTopic {
-		t.Error("topics[\"test\"] != privTopic")
+	if topics[privTopicID] != privTopic {
+		t.Errorf("topics[\"%v\"] != \"%v\"", privTopicID, privTopic)
 	}
-	if topics["test3"] != groupTopic {
-		t.Error("topics[\"test\"] != groupTopic")
+	if topics[groupTopicID] != groupTopic {
+		t.Errorf("topics[\"%v\"] != \"%v\"", groupTopicID, groupTopic)
 	}
 }
 
@@ -376,7 +353,8 @@ func TestClient_Sub(t *testing.T) {
 	client := ssePubSub.NewClient()
 
 	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("test1")
+	pubTopic := ssePubSub.NewPublicTopic()
+	pubTopicID := pubTopic.GetID()
 
 	// Subscribe to topic
 	client.Sub(pubTopic)
@@ -384,10 +362,10 @@ func TestClient_Sub(t *testing.T) {
 	// Get topic
 	topics := client.GetSubscribedTopics()
 	if len(topics) != 1 {
-		t.Error("len(topics) != 1")
+		t.Errorf("len(topics) != 1")
 	}
-	if topics["test1"] != pubTopic {
-		t.Error("topics[\"test\"] != pubTopic")
+	if topics[pubTopicID] != pubTopic {
+		t.Errorf("topics[\"%v\"] != \"%v\"", pubTopicID, pubTopic)
 	}
 }
 
@@ -397,7 +375,7 @@ func TestClient_Unsub(t *testing.T) {
 	client := ssePubSub.NewClient()
 
 	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("test1")
+	pubTopic := ssePubSub.NewPublicTopic()
 
 	// Subscribe to topic
 	client.Sub(pubTopic)
@@ -408,7 +386,7 @@ func TestClient_Unsub(t *testing.T) {
 	// Get topic
 	topics := client.GetSubscribedTopics()
 	if len(topics) != 0 {
-		t.Error("len(topics) != 0")
+		t.Errorf("len(topics) != 0")
 	}
 }
 
@@ -422,7 +400,7 @@ func TestClient_send(t *testing.T) {
 	client := ssePubSub.NewClient()
 
 	// Create topic and subscribe
-	topic := client.NewPrivateTopic("test")
+	topic := client.NewPrivateTopic()
 	if err := client.Sub(topic); err != nil {
 		t.Error(err)
 		return
@@ -441,7 +419,7 @@ func TestClient_send(t *testing.T) {
 	testData := "testdata"
 
 	if client.GetStatus() != Receving {
-		t.Error("client.GetStatus() != Receving")
+		t.Errorf("client.GetStatus() != Receving")
 		return
 	}
 
@@ -455,18 +433,18 @@ func TestClient_send(t *testing.T) {
 	<-done
 
 	if len(data) < 1 {
-		t.Error("len(data) < 1")
+		t.Errorf("len(data) < 1")
 		return
 	}
 	for _, d := range data {
 		if len(d.Updates) > 0 {
 			if d.Updates[0].Data != testData {
-				t.Error("data[].Updates[0].Data != testData")
+				t.Errorf("data[].Updates[0].Data != testData")
 				return
 			}
 			return
 		}
 	}
-	t.Error("No Updates received")
+	t.Errorf("No Updates received")
 
 }
