@@ -1,8 +1,8 @@
 package pubsubsse
 
 import (
-	"fmt"
 	"sync"
+	"github.com/google/uuid"
 )
 
 // EventType represents a function type that takes a pointer of any type.
@@ -26,8 +26,8 @@ func (em *EventManager[T]) Listen(listener EventType[T]) string {
 	em.lock.Lock()
 	defer em.lock.Unlock()
 
-	// Generate a unique ID for the listener, here we use the address as ID for simplicity.
-	id := fmt.Sprintf("%p", listener)
+	// Generate a unique ID for the listener
+	id := uuid.New().String()
 	em.listeners[id] = listener
 	return id
 }
