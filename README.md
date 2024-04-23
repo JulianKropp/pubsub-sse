@@ -2,6 +2,13 @@
 
 ![](./img/PubSub-SSE-round.png)
 
+[![Build Status](https://github.com/bigbluebutton-bot/pubsub-sse/actions/workflows/go.yml/badge.svg)](https://github.com/bigbluebutton-bot/pubsub-sse/actions/workflows/go.yml/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bigbluebutton-bot/pubsub-sse)](https://goreportcard.com/report/bigbluebutton-bot/pubsub-sse)
+[![GitHub tag](https://img.shields.io/github/tag/bigbluebutton-bot/pubsub-sse.svg)](https://github.com/bigbluebutton-bot/pubsub-sse/tags/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GoDoc](https://godoc.org/github.com/bigbluebutton-bot/pubsub-sse?status.svg)](https://godoc.org/github.com/bigbluebutton-bot/pubsub-sse)
+
+
 ## Overview
 
 PubSub-SSE is a Go-based server-sent events (SSE) publication and subscription service. It provides real-time data streaming from a server to connected clients using HTTP. This service is particularly useful for applications that require live data updates, such as dashboards, live feeds, or any real-time monitoring system.
@@ -11,22 +18,22 @@ PubSub-SSE is a Go-based server-sent events (SSE) publication and subscription s
 - **Real-Time Data Streaming**: Utilizes SSE to push live data updates to clients.
 - **Topic-Based Subscriptions**: Supports public, private, and group topics for targeted data distribution.
 - **Dynamic Topic Handling**: Add, remove, subscribe, and unsubscribe from topics at runtime.
-- **Flexible Topic Hierarchy**: Topics can have nested subtopics for granular control.
 - **Client Management**: Add and remove clients dynamically.
+- **Event based**: Events are sent to clients only when there is a change in the data.
 
 ## How It Works
 
 The service uses Go's net/http package to handle SSE connections. Clients receive JSON-formatted data, consisting of system events (sys) and data updates (updates). The data format includes information about topics (public, private, group), subscribed topics, and updated data for subscribed topics.
-Topic Types
+Topic Types:
 
-- **Public Topics**: Visible and subscribable by all clients.
+- **Public Topics**: Visible by all clients.
 - **Private Topics**: Exclusive to individual clients.
 - **Group Topics**: Shared among clients in the same group.
 
-## Topic Subscription Hierarchy
+## Topic Subscription
 
-- **Subscribing** to a topic also includes all its subtopics.
-- **Topics** and subtopics can be nested indefinitely.
+- **Subscribing** to a topic means receiving updates for that topic.
+- **Unsubscribing** from a topic stops receiving updates for that topic.
 
 ## Contribute
 
@@ -38,120 +45,8 @@ Contributions to extend or improve the PubSub-SSE are welcome. Please follow sta
 ## Server side (golang)
 
 ### Usage
-```go
-func main() {
-	// Create a new SSEPubSubService
-	ssePubSub := NewSSEPubSubService()
-
-	// Handle endpoints
-	// You can write your own endpoints if you want. Just have a look at the examples and modify them to your needs.
-	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { AddClient(ssePubSub, w, r) })                 // Add client endpoint
-	http.HandleFunc("/add/topic/public/", func(w http.ResponseWriter, r *http.Request) { AddPublicTopic(ssePubSub, w, r) })   // Add topic endpoint
-	http.HandleFunc("/add/topic/private/", func(w http.ResponseWriter, r *http.Request) { AddPrivateTopic(ssePubSub, w, r) }) // Add topic endpoint
-	http.HandleFunc("/sub", func(w http.ResponseWriter, r *http.Request) { Subscribe(ssePubSub, w, r) })                      // Subscribe endpoint
-	http.HandleFunc("/unsub", func(w http.ResponseWriter, r *http.Request) { Unsubscribe(ssePubSub, w, r) })                  // Unsubscribe endpoint
-	http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { Event(ssePubSub, w, r) })                        // Event SSE endpoint
-	go func() {
-		log.Fatal(http.ListenAndServe(":8080", nil)) // Start http server
-	}()
-
-	// Create a new client and get it by id
-	client := ssePubSub.NewClient()
-	client, _ = ssePubSub.GetClientByID(client.GetID())
-	fmt.Println("Client ID:", client.GetID())
-
-	// Create a public topic
-	pubTopic := ssePubSub.NewPublicTopic("server/status")
-
-	// Get topic by id. 3 ways to get a public topic:
-	pubTopic, _ = ssePubSub.GetPublicTopicByID("server/status")
-	pubTopic, _ = client.GetTopicByID("server/status")
-	pubTopic, _ = client.GetPublicTopicByID("server/status")
-
-	// Subscribe to the topic
-	client.Sub(pubTopic)
-
-	// Send data to the topic
-	pubTopic.Pub(TestData{Testdata: "testdata"})
-
-	// Unsubscribe from topic
-	client.Unsub(pubTopic)
-
-	// Remove public topic
-	ssePubSub.RemovePublicTopic(pubTopic)
-
-	// Create a private topic
-	privTopic := client.NewPrivateTopic("test/server")
-
-	// Get topic by ID. 2 ways to get a private topic:
-	privTopic, _ = client.GetTopicByID("test/server")
-	privTopic, _ = client.GetPrivateTopicByID("test/server")
-
-	// Subscribe to the topic
-	client.Sub(privTopic)
-
-	// Send data to the topic
-	privTopic.Pub(TestData{Testdata: "testdata"})
-
-	// Unsubscribe from topic
-	client.Unsub(privTopic)
-
-	// Remove private topic
-	client.RemovePrivateTopic(privTopic)
-
-	// Remove client
-	ssePubSub.RemoveClient(client)
-
-    //----------------------------
-    // PLANED FOR FUTURE VERSIONS
-    //----------------------------
-
-	// // Create a group
-	// group := ssePubSub.NewGroup("testgroup")
-	// group, _ = ssePubSub.GetGroupByID("testgroup")
-
-	// // Add client to group
-	// group.AddClient(client)
-
-	// // Get group from client
-	// group, _ = client.GetGroupByID("testgroup")
-
-	// // Create a group topic
-	// groupTopic := group.NewTopic("test/group")
-
-	// // Get topic by ID. 3 ways to get a group topic:
-	// groupTopic, _ = group.GetTopicByID("test/group")
-	// groupTopic, _ = client.GetTopicByID("test/group")
-	// groupTopic, _ = client.GetGroupTopicByID("test/group")
-
-	// // Subscribe to the topic
-	// client.Sub(groupTopic)
-
-	// // Send data to the topic
-	// groupTopic.Pub(TestData{Testdata: "testdata"})
-
-	// // Unsubscribe from topic
-	// client.Unsub(groupTopic)
-
-	// // Remove group topic
-	// group.RemoveTopic(groupTopic)
-
-	// // Remove client from group
-	// group.RemoveClient(client)
-
-	// // Remove group
-	// client.RemoveGroup(group)
-
-    //----------------------------
-    // PLANED FOR FUTURE VERSIONS
-    //----------------------------
-
-	time.Sleep(500 * time.Second)
-}
-```
-
-### Code structure
-![](./img/uml.png)
+Have a look at the `main.go` file to see how to use the PubSub-SSE service:
+[main.go](https://github.com/bigbluebutton-bot/pubsub-sse/blob/main/_example/main.go)
 
 ## Browser/Client side
 
@@ -175,16 +70,12 @@ The structure of the data received by the client is divided into two main parts:
    - Each update object includes:
      a. 'topic': The ID of the topic being updated.
      b. 'data': The new data for the topic, encapsulated in a nested JSON object.
-     
-**3. Note on Topics:**
-   - Topics are case sensitive and adhere to a naming convention that includes alphabets, numbers, and underscores.
-   - Topics support hierarchical structuring using slashes ('/'), allowing nested subtopics.
-   - Subscribing to a higher-level topic automatically subscribes the client to all its nested subtopics.
 
-**4. Note on Data Transmission:**
+**3. Note on Data Transmission:**
    - Only changes are sent to the client to minimize data transfer.
    - When a topic is added or removed, the entire updated 'sys' list is sent.
    - Subscriptions and unsubscriptions are communicated through respective 'sys' lists.
+   - 'subscribed' and 'unsubscribed' is not a list of all topics the client is subscribed to, but only the most recent one.
    - Updates are sent only for those topics which have new data.
 
 ## Examples of JSON messages received by the client:
@@ -193,91 +84,93 @@ The structure of the data received by the client is divided into two main parts:
    {"sys": null, "updates": null}
    ```
    - Indicates no system updates or data updates are available at the moment.
+   - Normaly this isn't sent to the client. This is just an example for understanding.
 
-**2. Example:  Data Update**:
+**2. Example: Creating a New Topic**
+   - When a new topic is created, the full list of topics is updated and sent to the client.
+   - Example JSON message upon new topic creation:
    ```json
-   {
-     "sys": null,
-     "updates": [
-       {
-         "topic": "exampleTopic",
-         "data": {"key": "value"}
-       }
-     ]
-   }
+  {
+      "sys": [{
+          "type": "topics",
+          "list": [
+              {"id": "T-6c485efd-ec63-4cef-927f-3d93387f5473", "type": "public"},
+              {"id": "T-9876a811-b2ea-4bdf-afc7-9c5c83fb4cda", "type": "private"},
+              {"id": "T-e054fcae-8011-496f-af6f-76f97870a3e3", "type": "group"}
+          ]
+      }],
+      "updates": null
+  }
+   ```
+   - This shows "newTopic" has been added to the list of available topics.
+
+**3. Example: Deleting a Topic**
+   - When a topic is deleted, the system updates the 'sys.topics' list excluding the deleted topic.
+   - Additionally, if any clients were subscribed to the deleted topic, it will appear in their 'sys.unsubscribed' list.
+   - The topic doesnt exist enymore for this client. It can't subscribe to it.
+   - Example JSON message upon topic deletion:
+   ```json
+  {
+      "sys": [{
+          "type": "topics",
+          "list": [
+              {"id": "T-6c485efd-ec63-4cef-927f-3d93387f5473", "type": "public"},
+              {"id": "T-9876a811-b2ea-4bdf-afc7-9c5c83fb4cda", "type": "private"}
+          ]
+      }, {
+          "type": "unsubscribed",
+          "list": [{"id": "T-e054fcae-8011-496f-af6f-76f97870a3e3"}]
+      }]
+      "updates": null
+  }
+   ```
+   - This indicates `{"id": "T-e054fcae-8011-496f-af6f-76f97870a3e3", "type": "group"}` has been removed, and clients subscribed to it are informed of the unsubscription.
+
+
+**4. Example: Subscribing to a Topic**
+   - When a client subscribes to a topic, the system updates the 'sys.subscribed' list and sends it to the client.
+   - This list only contains the most recent subscription. Not the full list of topics the client is subscribed to. If the client is subscribed to multiple topics, they are not shown in this message.
+   - Example JSON message upon subscription:
+   ```json
+    {
+        "sys": [{
+            "type": "subscribed",
+            "list": [{"id": "T-6c485efd-ec63-4cef-927f-3d93387f5473"}]
+        }],
+        "updates": null
+    }
+   ```
+   - This indicates the client has successfully subscribed to "exampleTopic".
+
+**5. Example:  Data Update**:
+   ```json
+    {
+        "sys": null,
+        "updates": [{"topic": "T-6c485efd-ec63-4cef-927f-3d93387f5473", "data": "DATAAAAAA"}]
+    }
    ```
    - Demonstrates a scenario where there is a new data update for a subscribed topic.
    - The data field can contain any valid JSON object.
 
-**3. Example: Subscribing to a Topic**
-   - When a client subscribes to a topic, the system updates the 'sys.subscribed' list and sends it to the client.
-   - Example JSON message upon subscription:
-   ```json
-     {
-       "sys": {
-         "subscribed": [
-           {"ID": "exampleTopic", "type": "public"}
-         ]
-       },
-       "updates": null
-     }
-   ```
-   - This indicates the client has successfully subscribed to "exampleTopic".
-   - If the client is subscribed to multiple topics, they are not shown in this message. This message only shows 
-     the topic the client has subscribed to most recently.
-
-**4. Example: Unsubscribing from a Topic**
+**6. Example: Unsubscribing from a Topic**
    - Upon unsubscribing from a topic, the system updates the 'sys.unsubscribed' list.
+   - This list only contains the most recent unsubscription. Not the full list of topics the client is unsubscribed from. If the client has unsubscribed from multiple topics, they are not shown in this message.
+   - The topic still exists in the 'sys.topics' list, but the client is no longer subscribed to it. It can resubscribe if needed.
    - Example JSON message upon unsubscription:
    ```json
-     {
-       "sys": {
-         "unsubscribed": [
-           {"ID": "exampleTopic", "type": "public"}
-         ]
-       },
-       "updates": null
-     }
+  {
+      "sys": [{
+          "type": "unsubscribed",
+          "list": [{"id": "T-6c485efd-ec63-4cef-927f-3d93387f5473"}]
+      }],
+      "updates": null
+  }
    ```
-   - This indicates the client has unsubscribed from "exampleTopic".
-   - This message shows the topic the client has unsubscribed from most recently.
-
-**5. Example: Creating a New Topic**
-   - When a new topic is created, the full list of topics is updated and sent to the client.
-   - Example JSON message upon new topic creation:
-   ```json
-     {
-       "sys": {
-         "topics": [
-           {"ID": "newTopic", "type": "public"},
-           {"ID": "existingTopic", "type": "private"}
-           ... other existing topics
-         ]
-       },
-       "updates": null
-     }
-   ```
-   - This shows "newTopic" has been added to the list of available topics.
-
-**6. Example: Deleting a Topic**
-   - When a topic is deleted, the system updates the 'sys.topics' list excluding the deleted topic.
-   - Additionally, if any clients were subscribed to the deleted topic, it will appear in their 'sys.unsubscribed' list.
-   - Example JSON message upon topic deletion:
-   ```json
-     {
-       "sys": {
-         "topics": [
-           List of remaining topics after deletion
-         ],
-         "unsubscribed": [
-           {"ID": "deletedTopic", "type": "public"}
-         ]
-       },
-       "updates": null
-     }
-   ```
-   - This indicates "deletedTopic" has been removed, and clients subscribed to it are informed of the unsubscription.
+   - This indicates the client has unsubscribed from "T-6c485efd-ec63-4cef-927f-3d93387f5473".
 
 These examples demonstrate the JSON structure the client receives in different scenarios related to topic management. 
 The design ensures that clients are always informed about their subscription status and the availability of topics, 
 enabling dynamic and responsive interactions with the SSEPubSubService.
+
+## Code structure
+![](./img/uml.png)
