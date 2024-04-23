@@ -2,7 +2,7 @@ module test
 
 go 1.20
 
-replace github.com/bigbluebutton-bot/pubsub-sse v0.0.0 => ../
+replace github.com/bigbluebutton-bot/pubsub-sse v0.0.0 => ../../
 
 require github.com/bigbluebutton-bot/pubsub-sse v0.0.0
 

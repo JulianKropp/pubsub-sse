@@ -22,7 +22,7 @@
         xhr.send();
         xhr.onload = function () {
             const response = JSON.parse(xhr.responseText);
-            // response: Object { client_id: "b9d8b698-99d4-47c3-946d-1ab1a1433624", ok: "true" }
+            // response: Object { client_id: "C-b9d8b698-99d4-47c3-946d-1ab1a1433624", ok: "true" }
             console.log(response);
 
             id = response.client_id;

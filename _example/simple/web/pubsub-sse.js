@@ -54,12 +54,12 @@ class PubSubSSE {
             }
         };
 
-        // this.evtSource.onclose = () => {
-        //     console.log("Connection to server closed.");
-        //     if (this.onDisconnected) {
-        //         this.onDisconnected();
-        //     }
-        // }
+        this.evtSource.onclose = () => {
+            console.log("Connection to server closed.");
+            if (this.onDisconnected) {
+                this.onDisconnected();
+            }
+        }
     }
 
     handleSysMessages(sysDatas) {
