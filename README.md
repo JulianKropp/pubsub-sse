@@ -48,6 +48,104 @@ Contributions to extend or improve the PubSub-SSE are welcome. Please follow sta
 Have a look at the `main.go` file to see how to use the PubSub-SSE service:
 [main.go](https://github.com/bigbluebutton-bot/pubsub-sse/blob/main/_example/main.go)
 
+#### Create new instance of the SSEPubSubService
+```go
+ssePubSub := pubsubsse.NewSSEPubSubService()
+http.Handle("/", http.FileServer(http.Dir("./web")))
+http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddClient(ssePubSub, w, r) })
+http.HandleFunc("/add/topic/public/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPublicTopic(ssePubSub, w, r) })
+http.HandleFunc("/sub", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Subscribe(ssePubSub, w, r) })
+http.HandleFunc("/unsub", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Unsubscribe(ssePubSub, w, r) })
+http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Event(ssePubSub, w, r) })
+go func() {
+    err := http.ListenAndServe(":8080", nil)
+    if err != nil {
+        log.Fatalf("[sys]: %s", err.Error())
+    }
+}()
+```
+
+#### Example of creating a client and subscribing to a public topic
+```go
+client := ssePubSub.NewClient()
+pubTopic := ssePubSub.NewPublicTopic()
+client.Sub(pubTopic)
+pubTopic.Pub(TestData{Testdata: "testdata"})
+client.Unsub(pubTopic)
+ssePubSub.RemovePublicTopic(pubTopic)
+```
+
+#### Example of creating a client and subscribing to a private topic
+```go
+client := ssePubSub.NewClient()
+privTopic := ssePubSub.NewPrivateTopic()
+client.Sub(privTopic)
+privTopic.Pub(TestData{Testdata: "testdata"})
+client.Unsub(privTopic)
+ssePubSub.RemovePrivateTopic(privTopic)
+```
+
+#### Example of creating a group and subscribing to a group topic
+```go
+group := ssePubSub.NewGroup()
+group.AddClient(client)
+groupTopic := group.NewTopic()
+client.Sub(groupTopic)
+groupTopic.Pub(TestData{Testdata: "testdata"})
+group.RemoveTopic(groupTopic)
+group.RemoveClient(client)
+ssePubSub.RemoveGroup(group)
+```
+
+#### Event Handling
+```go
+ssePubSub.OnNewClient.Listen(func(c *pubsubsse.Client) {
+    log.Infof("[sys]: New client: %s", c.GetID())
+    c.Sub(pubTopic)
+})
+
+go func() {
+    for {
+        pubTopic.Pub("DATAAAAAA")
+        time.Sleep(5 * time.Second)
+    }
+}()
+```
+There are several events that can be listened to:
+
+SSEPubSubService:
+- OnNewClient: Triggered when a new client is created.
+- OnNewPublicTopic: Triggered when a new public topic is created.
+- OnNewGroup: Triggered when a new group is established.
+- OnRemoveClient: Triggered when a client is removed from the service.
+- OnRemovePublicTopic: Triggered when a public topic is deleted.
+- OnRemoveGroup: Triggered when a group is deleted.
+Client:
+- OnStatusChange: Triggered when there's a change in the client's connection status.
+- OnNewTopic: Triggered when any new topic is created for this client.
+- OnNewPublicTopic: Triggered when a new public topic is created.
+- OnNewPrivateTopic: Triggered when a new private topic is created for this client.
+- OnNewGroupTopic: Initiated when a new topic is created within a group for this client.
+- OnNewGroup: Triggered when this client joins a new group.
+- OnSubToTopic: Triggered when this client subscribes to a topic.
+- OnRemoveTopic: Triggered when any topic is removed for this client.
+- OnRemovePublicTopic: Triggered when a public topic is removed.
+- OnRemovePrivateTopic: Triggered when a private topic is removed for this client.
+- OnRemoveGroupTopic: Triggered when a topic within a group of this client is deleted.
+- OnRemoveGroup: Triggered when a group is removed from the client.
+- OnUnsubFromTopic: Triggered when this client unsubscribes from a topic.
+Group:
+- OnNewClient: Triggered when a new client joins this group.
+- OnNewGroupTopic: Triggered when a new topic is created within this group.
+- OnRemoveClient: Triggered when a client is removed from this group.
+- OnRemoveGroupTopic: Triggered when a group topic is removed from this group.
+Topic:
+- OnNewClient: Triggered when a client subscribes to this topic.
+- OnNewSubOfClient: Triggered when a new subscription is made by a client to this topic.
+- OnPub: Triggered when a publication is made to this topic.
+- OnRemoveClient: Triggered when a client is removed from this topic.
+- OnUnsubOfClient: Triggered when a client unsubscribes from this topic.
+
 ## Browser/Client side
 
 ### Explanation of Data Received by the Browser Client via SSE:
