@@ -268,7 +268,37 @@ func TestSSEPubSubService_OnRemoveGroup(t *testing.T) {
 // Can be triggert wirth:
 // - SetStatus
 func TestClient_OnStatusChange(t *testing.T) {
-	//TODO: Implement this test.
+	ssePubSub := NewSSEPubSubService()
+	client := ssePubSub.NewClient()
+
+	expected_status := Waiting
+
+	counter	:= 0
+
+	client.OnStatusChange.Listen(func(status status) {
+		counter++
+		if status != expected_status {
+			t.Errorf("Expected %d, got %d", expected_status, status)
+		}
+	})
+
+	// Start /event
+	startEventServer(ssePubSub, t, 8083)
+
+	// Start the client
+	expected_status = Receving
+	done := make(chan bool)
+	connected := make(chan bool)
+	httpToEvent(t, client, 8083, connected, done, &[]eventData{})
+	<-connected
+	expected_status = Waiting
+	<-done
+	time.Sleep(100 * time.Millisecond)
+
+	// Check if the event was triggered.
+	if counter != 2 {
+		t.Errorf("Expected 2, got %d", counter)
+	}
 }
 
 // OnNewTopic
@@ -1436,7 +1466,36 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 // Can be triggert wirth:
 // - Pub
 func TestTopic_OnPub(t *testing.T) {
-	//TODO: Implement this test.
+	// Create a new SSEPubSubService.
+	s := NewSSEPubSubService()
+
+	// Create a new public topic.
+	topic := s.NewPublicTopic()
+
+	// Create a new client.
+	s.NewClient()
+
+	// Counter of how many times the event was triggered.
+	counter := 0
+
+	// Event
+	topic.OnPub.Listen(func(data interface{}) {
+		// interface to eventData
+		if data.(*eventData).Updates[0].Data != "test" {
+			t.Errorf("Expected test, got %s", data.(*eventData).Updates[0].Data)
+		}
+		counter++
+	})
+
+	// Publish to the topic.
+	topic.Pub("test")
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Check if the event was triggered.
+	if counter != 1 {
+		t.Errorf("Expected 1, got %d", counter)
+	}
 }
 
 // OnRemoveClient
