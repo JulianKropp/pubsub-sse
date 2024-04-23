@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+    <script src="chat.js"></script>
+    <title>Simple Chat App</title>
+</head>
+<body>
+    <header>
+        <h1>Simple Chat App</h1>
+    </header>
+
+    <section id="user-settings">
+        <h2>User Settings</h2>
+        <form>
+            <label for="username">Enter your name:</label>
+            <input type="text" id="username" name="username">
+            <button onclick="joinChat()">Set Name</button>
+        </form>
+    </section>
+    
+    <main>
+        <aside id="online-users">
+            <h2>Online Users</h2>
+            <ul>
+                <!-- List of online users will be displayed here -->
+            </ul>
+        </aside>
+        
+        <section id="chat-room">
+            <h2>Public Chat</h2>
+            <article id="chat-messages">
+                <h3>Messages</h3>
+                <div id="messages">
+                    <!-- Messages will be displayed here -->
+                </div>
+            </article>
+            <form id="message-form">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button onclick="sendMSG()">Send</button>
+            </form>
+        </section>
+    </main>
+    
+    <footer>
+        <p>Chat App © 2024</p>
+    </footer>
+
+    <script src="chat.js"></script>
+</body>
+</html>
