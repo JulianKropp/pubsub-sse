@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"sync"
@@ -17,43 +18,29 @@ func main() {
 	Server := NewServer(8080)
 	PublicChatRoom := Server.NewChatRoom()
 
-	// If client is created sub to users and publicChat
-	Server.ssePubSub.OnNewClient.Listen(func(c *pubsubsse.Client) {
-		log.Infof("[sys]: New client: %s", c.GetID())
-
-		// Create new client
-		user := PublicChatRoom.NewUser("User", c)
-
-		// If client disconnects remove client after 10s and delete the listener
-		var onStatusChangeID string
-		onStatusChangeID = c.OnStatusChange.Listen(func(status pubsubsse.Status) {
-			log.Infof("[sys]: Client status change: %s", status)
-
-			if status == pubsubsse.Waiting { // If client is waiting for too long remove client
-				time.Sleep(10 * time.Second)
-
-				if c.GetStatus() == pubsubsse.Waiting {
-					log.Infof("[sys]: Client Timed out: %s", c.GetID())
-					c.OnStatusChange.Remove(onStatusChangeID)
-					Server.ssePubSub.RemoveClient(c)
-
-					// Remove user
-					PublicChatRoom.RemoveUser(user)
-				}
-			}
-		})
-	})
+	// Handle special endpoints
+	Server.http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { AddClient(PublicChatRoom, w, r) }) // Add client endpoint
+	Server.Start()
 
 	time.Sleep(500 * time.Second)
 }
 
+func AddClient(c *ChatRoom, w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
+	// Create a new user
+	user := c.NewUser("User")
 
+	// Send the client ID
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "client_id": user.client.GetID()})
+}
 
 type Server struct {
 	lock sync.Mutex
 
 	id        string
+	http      *http.ServeMux
+	httpport  int
 	ssePubSub *pubsubsse.SSEPubSubService
 	chatRooms map[string]*ChatRoom
 }
@@ -89,23 +76,27 @@ func NewServer(port int) *Server {
 	// Create a new SSEPubSubService
 	ssePubSub := pubsubsse.NewSSEPubSubService()
 
-	// Handle endpoints
-	http.Handle("/", http.FileServer(http.Dir("./web"))) // Serve static files
-
-	// You can write your own endpoints if you want. Just have a look at the examples and modify them to your needs.
-	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddClient(ssePubSub, w, r) }) // Add client endpoint
-	http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Event(ssePubSub, w, r) })        // Event SSE endpoint
-	go func() {
-		err := http.ListenAndServe(":"+strconv.Itoa(port), nil)
-		log.Fatalf("[sys]: %s", err.Error()) // Start http server
-	}()
-
-	return &Server{
+	s := &Server{
 		lock:      sync.Mutex{},
 		id:        "S-" + uuid.New().String(),
+		http:      http.NewServeMux(),
+		httpport:  port,
 		ssePubSub: ssePubSub,
 		chatRooms: make(map[string]*ChatRoom),
 	}
+
+	// Handle endpoint
+	s.http.Handle("/", http.FileServer(http.Dir("./web")))                                                           // Serve static files
+	s.http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Event(s.ssePubSub, w, r) }) // Event SSE endpoint
+
+	return s
+}
+
+func (s *Server) Start() {
+	go func() {
+		err := http.ListenAndServe(":"+strconv.Itoa(s.httpport), s.http)
+		log.Fatalf("[sys]: %s", err.Error()) // Start http server
+	}()
 }
 
 func (s *Server) NewChatRoom() *ChatRoom {
@@ -128,11 +119,15 @@ func (s *Server) NewChatRoom() *ChatRoom {
 	return chatRoom
 }
 
-func (c *ChatRoom) NewUser(name string, client *pubsubsse.Client) *User {
+func (c *ChatRoom) NewUser(name string) *User {
+	// Create a new client
+	ssePubSub := c.server.ssePubSub
+	client := ssePubSub.NewClient()
+
 	user := &User{
-		lock:      sync.Mutex{},
-		Id:   "U-" + uuid.New().String(),
-		Name: name,
+		lock:   sync.Mutex{},
+		Id:     "U-" + uuid.New().String(),
+		Name:   name,
 		client: client,
 	}
 
@@ -146,6 +141,21 @@ func (c *ChatRoom) NewUser(name string, client *pubsubsse.Client) *User {
 	// Subscribe user to chatTopic and userTopic
 	user.client.Sub(c.chatTopic)
 	user.client.Sub(c.userTopic)
+
+	// If client disconnects remove client after 10s and delete the listener
+	var onStatusChangeID string
+	onStatusChangeID = client.OnStatusChange.Listen(func(status pubsubsse.Status) {
+		log.Infof("[sys]: Client status change: %s", status)
+
+		if client.GetStatus() == pubsubsse.Timeout || client.GetStatus() == pubsubsse.Stopped {
+			log.Infof("[sys]: Client Timed out: %s", client.GetID())
+			client.OnStatusChange.Remove(onStatusChangeID)
+			ssePubSub.RemoveClient(client)
+
+			// Remove user
+			c.RemoveUser(user)
+		}
+	})
 
 	return user
 }
