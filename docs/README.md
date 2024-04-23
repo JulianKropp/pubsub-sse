@@ -99,17 +99,16 @@ ssePubSub.RemoveGroup(group)
 
 #### Event Handling
 ```go
-ssePubSub.OnNewClient.Listen(func(c *pubsubsse.Client) {
+eventid := ssePubSub.OnNewClient.Listen(func(c *pubsubsse.Client) {
     log.Infof("[sys]: New client: %s", c.GetID())
-    c.Sub(pubTopic)
+    c.Sub(pubTopic) // exmaple
 })
 
-go func() {
-    for {
-        pubTopic.Pub("DATAAAAAA")
-        time.Sleep(5 * time.Second)
-    }
-}()
+// Get list of events of OnNewClient
+events := ssePubSub.OnNewClient.GetListeners()
+
+// Remove the event listener
+ssePubSub.OnNewClient.Remove(eventid)
 ```
 There are several events that can be listened to:
 
