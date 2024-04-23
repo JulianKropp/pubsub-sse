@@ -34,7 +34,7 @@ type GroupTopic struct {
 
 func newGroup() *Group {
 	return &Group{
-		id: uuid.New().String(),
+		id: "G-" + uuid.New().String(),
 
 		lock: &sync.Mutex{},
 

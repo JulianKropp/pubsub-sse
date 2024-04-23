@@ -4,10 +4,12 @@ import (
 	"sync"
 
 	"github.com/apex/log"
+	"github.com/google/uuid"
 )
 
 // SSEPubSubService represents the SSE publisher and subscriber system.
 type SSEPubSubService struct {
+	id           string
 	clients      map[string]*Client
 	publicTopics map[string]*Topic
 	groups       map[string]*Group
@@ -26,6 +28,7 @@ type SSEPubSubService struct {
 // NewSSEPubSub creates a new sSEPubSubService instance.
 func NewSSEPubSubService() *SSEPubSubService {
 	return &SSEPubSubService{
+		id:           "S-" + uuid.New().String(),
 		clients:      make(map[string]*Client),
 		publicTopics: make(map[string]*Topic),
 		groups:       make(map[string]*Group),
@@ -39,6 +42,14 @@ func NewSSEPubSubService() *SSEPubSubService {
 		OnRemovePublicTopic: newEventManager[*Topic](),
 		OnRemoveGroup:       newEventManager[*Group](),
 	}
+}
+
+// GetID returns the ID of the sSEPubSubService.
+func (s *SSEPubSubService) GetID() string {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.id
 }
 
 // Create new client

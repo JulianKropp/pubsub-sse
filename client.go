@@ -56,7 +56,7 @@ type Client struct {
 // Create a new client
 func newClient(sSEPubSubService *SSEPubSubService) *Client {
 	return &Client{
-		id:     uuid.New().String(),
+		id:     "C-" + uuid.New().String(),
 		status: Waiting,
 
 		stream: make(chan string, 100),

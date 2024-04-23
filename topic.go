@@ -34,7 +34,7 @@ type Topic struct {
 // Create a new topic
 func newTopic(ttype topicType) *Topic {
 	return &Topic{
-		id:      uuid.New().String(),
+		id:      "T-" + uuid.New().String(),
 		ttype:   ttype,
 		clients: make(map[string]*Client),
 

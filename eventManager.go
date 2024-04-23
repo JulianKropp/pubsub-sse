@@ -28,7 +28,7 @@ func (em *eventManager[T]) Listen(listener eventType[T]) string {
 	defer em.lock.Unlock()
 
 	// Generate a unique ID for the listener
-	id := uuid.New().String()
+	id := "E-" + uuid.New().String()
 	em.listeners[id] = listener
 	return id
 }

@@ -20,6 +20,14 @@ import (
 // +GetPublicTopics(): map[string]*topic
 // +GetPublicTopicByID(ID string): *topic, bool
 
+// Get ID
+func TestSSEPubSubService_GetID(t *testing.T) {
+	ssePubSub := NewSSEPubSubService()
+	if ssePubSub.GetID() == "" {
+		t.Error("ID not found")
+	}
+}
+
 // Create a new SSEPubSubService
 func TestNewSSEPubSubService(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
