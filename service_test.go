@@ -2,6 +2,7 @@ package pubsubsse
 
 import (
 	"testing"
+	"time"
 )
 
 // Tests for:
@@ -99,6 +100,15 @@ func TestSSEPubSubService_GetClientByID(t *testing.T) {
 	}
 	if clientc != client {
 		t.Error("Client not found: wrong pointer")
+	}
+}
+
+// Test get/set client timout
+func TestSSEPubSubService_GetClientTimeout(t *testing.T) {
+	ssePubSub := NewSSEPubSubService()
+	ssePubSub.SetClientTimeout(5 * time.Second)
+	if ssePubSub.GetClientTimeout() != 5*time.Second {
+		t.Error("Client timeout not set")
 	}
 }
 

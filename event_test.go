@@ -266,18 +266,26 @@ func TestSSEPubSubService_OnRemoveGroup(t *testing.T) {
 // OnStatusChange
 // Can be triggert wirth:
 // - SetStatus
+// - Wait for Tiemout
+// - RemoveClient
 func TestClient_OnStatusChange(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
+	ssePubSub.SetClientTimeout(1 * time.Second)
 	client := ssePubSub.NewClient()
 
-	expected_status := Waiting
+	expectedStatuses := make(chan Status, 4) // Channel to synchronize expected statuses
+	expectedStatuses <- Receiving            // Queue the expected statuses in order
+	expectedStatuses <- Waiting
+	expectedStatuses <- Timeout
 
 	counter := 0
 
 	client.OnStatusChange.Listen(func(status Status) {
 		counter++
-		if status != expected_status {
-			t.Errorf("Expected %d, got %d", expected_status, status)
+		expectedStatus := <-expectedStatuses // Receive the next expected status
+		t.Log("Status:", status)
+		if status != expectedStatus {
+			t.Errorf("Expected %d, got %d", expectedStatus, status)
 		}
 	})
 
@@ -285,18 +293,35 @@ func TestClient_OnStatusChange(t *testing.T) {
 	startEventServer(ssePubSub, t, 8083)
 
 	// Start the client
-	expected_status = Receving
 	done := make(chan bool)
 	connected := make(chan bool)
 	httpToEvent(t, client, 8083, connected, done, &[]eventData{})
 	<-connected
-	expected_status = Waiting
 	<-done
+	time.Sleep(2 * time.Second) // Wait for the timeout to potentially trigger
+
+	// Check if the event was triggered correctly.
+	if counter != 3 {
+		t.Errorf("Expected 3 status changes, got %d", counter)
+	}
+
+	client2 := ssePubSub.NewClient()
+	counter = 0
+
+	client2.OnStatusChange.Listen(func(status Status) {
+		counter++
+		if status != Stopped {
+			t.Errorf("Expected %d, got %d", Stopped, status)
+		}
+	})
+
+	ssePubSub.RemoveClient(client2)
+
 	time.Sleep(100 * time.Millisecond)
 
-	// Check if the event was triggered.
-	if counter != 2 {
-		t.Errorf("Expected 2, got %d", counter)
+	// Check if the event was triggered correctly.
+	if counter != 1 {
+		t.Errorf("Expected 1 status changes, got %d", counter)
 	}
 }
 

@@ -143,7 +143,7 @@ func Event(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Test if client is already receiving
-	if client.GetStatus() == Receving {
+	if client.GetStatus() == Receiving {
 		w.WriteHeader(http.StatusBadRequest)
 
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "client is already receiving"})

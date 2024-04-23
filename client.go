@@ -14,8 +14,11 @@ import (
 type Status int
 
 const (
-	Waiting Status = iota
-	Receving
+	Created Status = iota
+	Waiting 
+	Receiving
+	Timeout
+	Stopped
 )
 
 type onEventFunc func(string)
@@ -30,6 +33,8 @@ type Client struct {
 	stopchan chan struct{}
 
 	lock sync.Mutex
+
+	clientTimout time.Duration
 
 	sSEPubSubService *SSEPubSubService
 
@@ -57,11 +62,13 @@ type Client struct {
 func newClient(sSEPubSubService *SSEPubSubService) *Client {
 	return &Client{
 		id:     "C-" + uuid.New().String(),
-		status: Waiting,
+		status: Created,
 
 		stream: make(chan string, 100),
 
 		lock: sync.Mutex{},
+
+		clientTimout: sSEPubSubService.GetClientTimeout(),
 
 		stopchan: nil,
 
@@ -89,13 +96,17 @@ func newClient(sSEPubSubService *SSEPubSubService) *Client {
 }
 
 // Stop the client from receiving messages over the event stream
-func (c *Client) stop() {
-	if c.GetStatus() == Waiting {
+func (c *Client) stop(status ...Status) {
+	if c.GetStatus() == Waiting || c.GetStatus() == Timeout || c.GetStatus() == Stopped {
 		return
 	}
 
-	// Stop the client
-	c.changeStatus(Waiting)
+	if len(status) > 0 {
+		c.changeStatus(status[0])
+	} else {
+		// Stop the client
+		c.changeStatus(Stopped)
+	}
 
 	// Lock the client
 	c.lock.Lock()
@@ -118,9 +129,18 @@ func (c *Client) GetID() string {
 // Change status
 func (c *Client) changeStatus(s Status) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	c.status = s
+	c.lock.Unlock()
+
+	// Start TimeoutCheck
+	if s == Waiting {
+		go func() {
+			time.Sleep(c.clientTimout)
+			if c.GetStatus() == Waiting {
+				c.changeStatus(Timeout)
+			}
+		}()
+	}
 
 	// Emit event
 	c.OnStatusChange.Emit(c.status)
@@ -388,7 +408,7 @@ func (c *Client) send(msg interface{}) error {
 	}
 
 	// Send the data
-	if c.GetStatus() == Receving {
+	if c.GetStatus() == Receiving {
 		data := "data: " + string(jsonData) + "\n\n"
 
 		//Try 10 times with 100ms to send data to the stream
@@ -544,12 +564,12 @@ func (c *Client) sendInitMSG(onEvent onEventFunc) error {
 // 5. Stop the client if the stop channel is closed
 func (c *Client) Start(ctx context.Context, onEvent onEventFunc) error {
 	// Set status to Receving and create stop channel
-	if c.GetStatus() == Receving {
+	if c.GetStatus() == Receiving {
 		return fmt.Errorf("[C:%s]: Client is already receiving", c.GetID())
 	}
 
 	// Set status to Receving and create stop channel
-	c.changeStatus(Receving)
+	c.changeStatus(Receiving)
 	c.lock.Lock()
 	c.stopchan = make(chan struct{})
 	c.stream = make(chan string)
@@ -557,7 +577,7 @@ func (c *Client) Start(ctx context.Context, onEvent onEventFunc) error {
 
 	// Stop the client at the end
 	defer func() {
-		c.stop()
+		c.stop(Waiting)
 	}()
 
 	if err := c.sendInitMSG(onEvent); err != nil {

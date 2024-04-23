@@ -2,6 +2,7 @@ package pubsubsse
 
 import (
 	"testing"
+	"time"
 )
 
 // -----------------------------
@@ -20,9 +21,10 @@ func TestClient_GetID(t *testing.T) {
 // TestClient_GetStatus tests Client.GetStatus()
 func TestClient_GetStatus(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
+	ssePubSub.SetClientTimeout(1 * time.Second)
 	client := ssePubSub.NewClient()
-	if client.GetStatus() != Waiting {
-		t.Errorf("Client.GetStatus() != Waiting")
+	if client.GetStatus() != Created {
+		t.Errorf("Client.GetStatus() != Created")
 	}
 
 	// Start /event
@@ -34,8 +36,22 @@ func TestClient_GetStatus(t *testing.T) {
 	httpToEvent(t, client, 8080, connected, done, &[]eventData{})
 	<-connected
 
-	if client.GetStatus() != Receving {
+	if client.GetStatus() != Receiving {
 		t.Errorf("Client.GetStatus() != Receving")
+	}
+
+	<-done
+
+	time.Sleep(100 * time.Millisecond)
+
+	if client.GetStatus() != Waiting {
+		t.Errorf("Client.GetStatus() != Waiting: got %d", client.GetStatus())
+	}
+
+	time.Sleep(3 * time.Second)
+
+	if client.GetStatus() != Timeout {
+		t.Errorf("Client.GetStatus() != Timeout")
 	}
 }
 
@@ -418,7 +434,7 @@ func TestClient_send(t *testing.T) {
 
 	testData := "testdata"
 
-	if client.GetStatus() != Receving {
+	if client.GetStatus() != Receiving {
 		t.Errorf("client.GetStatus() != Receving")
 		return
 	}

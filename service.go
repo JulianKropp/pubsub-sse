@@ -2,6 +2,7 @@ package pubsubsse
 
 import (
 	"sync"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 type SSEPubSubService struct {
 	id           string
 	clients      map[string]*Client
+	clientTimout time.Duration
 	publicTopics map[string]*Topic
 	groups       map[string]*Group
 
@@ -30,6 +32,7 @@ func NewSSEPubSubService() *SSEPubSubService {
 	return &SSEPubSubService{
 		id:           "S-" + uuid.New().String(),
 		clients:      make(map[string]*Client),
+		clientTimout: 10 * time.Second,
 		publicTopics: make(map[string]*Topic),
 		groups:       make(map[string]*Group),
 
@@ -54,10 +57,10 @@ func (s *SSEPubSubService) GetID() string {
 
 // Create new client
 func (s *SSEPubSubService) NewClient() *Client {
+	c := newClient(s)
+
 	// Lock the sSEPubSubService
 	s.lock.Lock()
-
-	c := newClient(s)
 	s.clients[c.GetID()] = c
 	s.lock.Unlock()
 
@@ -103,7 +106,7 @@ func (s *SSEPubSubService) RemoveClient(c *Client) {
 	}
 
 	// stop the client
-	c.stop()
+	c.stop(Stopped)
 
 	// Lock the sSEPubSubService
 	s.lock.Lock()
@@ -114,6 +117,22 @@ func (s *SSEPubSubService) RemoveClient(c *Client) {
 
 	// Emit event
 	s.OnRemoveClient.Emit(c)
+}
+
+// Get client timeout
+func (s *SSEPubSubService) GetClientTimeout() time.Duration {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.clientTimout
+}
+
+// Set client timeout
+func (s *SSEPubSubService) SetClientTimeout(d time.Duration) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.clientTimout = d
 }
 
 // Add Group
