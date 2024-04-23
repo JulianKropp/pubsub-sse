@@ -113,38 +113,41 @@ go func() {
 ```
 There are several events that can be listened to:
 
-SSEPubSubService:
-- OnNewClient: Triggered when a new client is created.
-- OnNewPublicTopic: Triggered when a new public topic is created.
-- OnNewGroup: Triggered when a new group is established.
-- OnRemoveClient: Triggered when a client is removed from the service.
-- OnRemovePublicTopic: Triggered when a public topic is deleted.
-- OnRemoveGroup: Triggered when a group is deleted.
-Client:
-- OnStatusChange: Triggered when there's a change in the client's connection status.
-- OnNewTopic: Triggered when any new topic is created for this client.
-- OnNewPublicTopic: Triggered when a new public topic is created.
-- OnNewPrivateTopic: Triggered when a new private topic is created for this client.
-- OnNewGroupTopic: Initiated when a new topic is created within a group for this client.
-- OnNewGroup: Triggered when this client joins a new group.
-- OnSubToTopic: Triggered when this client subscribes to a topic.
-- OnRemoveTopic: Triggered when any topic is removed for this client.
-- OnRemovePublicTopic: Triggered when a public topic is removed.
-- OnRemovePrivateTopic: Triggered when a private topic is removed for this client.
-- OnRemoveGroupTopic: Triggered when a topic within a group of this client is deleted.
-- OnRemoveGroup: Triggered when a group is removed from the client.
-- OnUnsubFromTopic: Triggered when this client unsubscribes from a topic.
-Group:
-- OnNewClient: Triggered when a new client joins this group.
-- OnNewGroupTopic: Triggered when a new topic is created within this group.
-- OnRemoveClient: Triggered when a client is removed from this group.
-- OnRemoveGroupTopic: Triggered when a group topic is removed from this group.
-Topic:
-- OnNewClient: Triggered when a client subscribes to this topic.
-- OnNewSubOfClient: Triggered when a new subscription is made by a client to this topic.
-- OnPub: Triggered when a publication is made to this topic.
-- OnRemoveClient: Triggered when a client is removed from this topic.
-- OnUnsubOfClient: Triggered when a client unsubscribes from this topic.
+##### SSEPubSubService:
+- `OnNewClient`: Triggered when a new client is created.
+- `OnNewPublicTopic`: Triggered when a new public topic is created.
+- `OnNewGroup`: Triggered when a new group is established.
+- `OnRemoveClient`: Triggered when a client is removed from the service.
+- `OnRemovePublicTopic`: Triggered when a public topic is deleted.
+- `OnRemoveGroup`: Triggered when a group is deleted.
+
+##### Client:
+- `OnStatusChange`: Triggered when there's a change in the client's connection status.
+- `OnNewTopic`: Triggered when any new topic is created for this client.
+- `OnNewPublicTopic`: Triggered when a new public topic is created.
+- `OnNewPrivateTopic`: Triggered when a new private topic is created for this client.
+- `OnNewGroupTopic`: Initiated when a new topic is created within a group for this client.
+- `OnNewGroup`: Triggered when this client joins a new group.
+- `OnSubToTopic`: Triggered when this client subscribes to a topic.
+- `OnRemoveTopic`: Triggered when any topic is removed for this client.
+- `OnRemovePublicTopic`: Triggered when a public topic is removed.
+- `OnRemovePrivateTopic`: Triggered when a private topic is removed for this client.
+- `OnRemoveGroupTopic`: Triggered when a topic within a group of this client is deleted.
+- `OnRemoveGroup`: Triggered when a group is removed from the client.
+- `OnUnsubFromTopic`: Triggered when this client unsubscribes from a topic.
+
+##### Group:
+- `OnNewClient`: Triggered when a new client joins this group.
+- `OnNewGroupTopic`: Triggered when a new topic is created within this group.
+- `OnRemoveClient`: Triggered when a client is removed from this group.
+- `OnRemoveGroupTopic`: Triggered when a group topic is removed from this group.
+
+##### Topic:
+- `OnNewClient`: Triggered when a client subscribes to this topic.
+- `OnNewSubOfClient`: Triggered when a new subscription is made by a client to this topic.
+- `OnPub`: Triggered when a publication is made to this topic.
+- `OnRemoveClient`: Triggered when a client is removed from this topic.
+- `OnUnsubOfClient`: Triggered when a client unsubscribes from this topic.
 
 ## Browser/Client side
 
