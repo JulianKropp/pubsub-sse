@@ -3,7 +3,6 @@ package pubsubsse
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -62,7 +61,7 @@ func httpToEvent(t *testing.T, client *Client, port int, connected, done chan bo
 				t.Logf("Error reading from SSE stream: %s", err.Error())
 				return
 			}
-			fmt.Printf("%s message: %s\n", client.GetID(), line)
+			t.Logf("%s message: %s\n", client.GetID(), line)
 			stream <- string(line)
 		}
 	}()
@@ -72,7 +71,7 @@ func httpToEvent(t *testing.T, client *Client, port int, connected, done chan bo
 		for {
 			select {
 			case <-timeout:
-				fmt.Println("timeout")
+				t.Logf("timeout\n")
 				// Send connected signal
 				if !con {
 					con = true
@@ -91,7 +90,7 @@ func httpToEvent(t *testing.T, client *Client, port int, connected, done chan bo
 				if !con {
 					con = true
 					connected <- true
-					fmt.Printf("ok: %s\n", client.GetID())
+					t.Logf("ok: %s\n", client.GetID())
 				}
 
 				// Remove the "data: " from message

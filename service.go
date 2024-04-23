@@ -69,7 +69,7 @@ func (s *SSEPubSubService) RemoveClient(c *Client) {
 	alltopics := c.GetAllTopics()
 	for _, t := range alltopics {
 		if err := c.Unsub(t); err != nil {
-			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetID(), err)
+			log.Warnf("[C:%s]: Warning unsubscribing from topic %s: %s", c.GetID(), t.GetID(), err)
 		}
 	}
 
@@ -224,7 +224,7 @@ func (s *SSEPubSubService) NewPublicTopic() *Topic {
 	// Inform all clients about the new topic
 	for _, c := range s.GetClients() {
 		if err := c.sendTopicList(); err != nil {
-			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
 		}
 
 		// event:
@@ -268,7 +268,7 @@ func (s *SSEPubSubService) RemovePublicTopic(t *Topic) {
 	// Remove this topic from all clients
 	for _, c := range t.GetClients() {
 		if err := c.Unsub(t); err != nil {
-			log.Errorf("[C:%s]: Error unsubscribing from topic %s: %s", c.GetID(), t.GetID(), err)
+			log.Warnf("[C:%s]: Warning unsubscribing from topic %s: %s", c.GetID(), t.GetID(), err)
 		}
 	}
 
@@ -280,7 +280,7 @@ func (s *SSEPubSubService) RemovePublicTopic(t *Topic) {
 	// Inform all clients about the removed topic by sending the new topic list
 	for _, c := range s.GetClients() {
 		if err := c.sendTopicList(); err != nil {
-			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
 		}
 
 		// Emit event

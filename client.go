@@ -38,19 +38,19 @@ type Client struct {
 	groups map[string]*Group
 
 	// Events:
-	OnStatusChange *eventManager[status]
-	OnNewTopic *eventManager[*Topic]
-	OnNewPublicTopic *eventManager[*Topic]
-	OnNewPrivateTopic *eventManager[*Topic]
-	OnNewGroupTopic *eventManager[*GroupTopic]
-	OnNewGroup *eventManager[*Group]
-	OnSubToTopic *eventManager[*Topic]
-	OnRemoveTopic *eventManager[*Topic]
-	OnRemovePublicTopic *eventManager[*Topic]
+	OnStatusChange       *eventManager[status]
+	OnNewTopic           *eventManager[*Topic]
+	OnNewPublicTopic     *eventManager[*Topic]
+	OnNewPrivateTopic    *eventManager[*Topic]
+	OnNewGroupTopic      *eventManager[*GroupTopic]
+	OnNewGroup           *eventManager[*Group]
+	OnSubToTopic         *eventManager[*Topic]
+	OnRemoveTopic        *eventManager[*Topic]
+	OnRemovePublicTopic  *eventManager[*Topic]
 	OnRemovePrivateTopic *eventManager[*Topic]
-	OnRemoveGroupTopic *eventManager[*GroupTopic]
-	OnRemoveGroup *eventManager[*Group]
-	OnUnsubFromTopic *eventManager[*Topic]
+	OnRemoveGroupTopic   *eventManager[*GroupTopic]
+	OnRemoveGroup        *eventManager[*Group]
+	OnUnsubFromTopic     *eventManager[*Topic]
 }
 
 // Create a new client
@@ -72,19 +72,19 @@ func newClient(sSEPubSubService *SSEPubSubService) *Client {
 		groups: make(map[string]*Group),
 
 		// Events:
-		OnStatusChange: newEventManager[status](),
-		OnNewTopic: newEventManager[*Topic](),
-		OnNewPublicTopic: sSEPubSubService.OnNewPublicTopic,
-		OnNewPrivateTopic: newEventManager[*Topic](),
-		OnNewGroupTopic: newEventManager[*GroupTopic](),
-		OnNewGroup: newEventManager[*Group](),
-		OnSubToTopic: newEventManager[*Topic](),
-		OnRemoveTopic: newEventManager[*Topic](),
-		OnRemovePublicTopic: sSEPubSubService.OnRemovePublicTopic,
+		OnStatusChange:       newEventManager[status](),
+		OnNewTopic:           newEventManager[*Topic](),
+		OnNewPublicTopic:     sSEPubSubService.OnNewPublicTopic,
+		OnNewPrivateTopic:    newEventManager[*Topic](),
+		OnNewGroupTopic:      newEventManager[*GroupTopic](),
+		OnNewGroup:           newEventManager[*Group](),
+		OnSubToTopic:         newEventManager[*Topic](),
+		OnRemoveTopic:        newEventManager[*Topic](),
+		OnRemovePublicTopic:  sSEPubSubService.OnRemovePublicTopic,
 		OnRemovePrivateTopic: newEventManager[*Topic](),
-		OnRemoveGroupTopic: newEventManager[*GroupTopic](),
-		OnRemoveGroup: newEventManager[*Group](),
-		OnUnsubFromTopic: newEventManager[*Topic](),
+		OnRemoveGroupTopic:   newEventManager[*GroupTopic](),
+		OnRemoveGroup:        newEventManager[*Group](),
+		OnUnsubFromTopic:     newEventManager[*Topic](),
 	}
 }
 
@@ -282,7 +282,7 @@ func (c *Client) NewPrivateTopic() *Topic {
 
 	// Inform the client about the new topic
 	if err := c.sendTopicList(); err != nil {
-		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+		log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.GetID(), err)
 	}
 
 	// Emit event
@@ -317,7 +317,7 @@ func (c *Client) RemovePrivateTopic(t *Topic) {
 
 	// Inform the client about the removed topic by sending the new topic list
 	if err := c.sendTopicList(); err != nil {
-		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+		log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.GetID(), err)
 	}
 
 	// Emit event
@@ -337,7 +337,7 @@ func (c *Client) Sub(topic *Topic) error {
 
 			// Inform the client about the new topic by sending this topic as subscribed
 			if err := c.sendSubscribedTopic(t); err != nil {
-				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+				log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.GetID(), err)
 			}
 
 			// Emit event
@@ -364,7 +364,7 @@ func (c *Client) Unsub(topic *Topic) error {
 
 			// Inform the client about the new topic by sending this topic as unsubscribed
 			if err := c.sendUnsubscribedTopic(t); err != nil {
-				log.Errorf("[C:%s]: Error sending new topic to client: %s", c.GetID(), err)
+				log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.GetID(), err)
 			}
 
 			// Emit event
@@ -400,7 +400,7 @@ func (c *Client) send(msg interface{}) error {
 				return nil
 			default:
 				log.Infof("[C:%s]: stream is full: try: %d", c.GetID(), i)
-				time.Sleep(10 * time.Millisecond)		
+				time.Sleep(10 * time.Millisecond)
 			}
 		}
 		// handle the case where the channel is full or the client is not receiving
@@ -427,7 +427,7 @@ func (c *Client) sendTopicList() error {
 	// Append topics data
 	for _, topic := range topics {
 		t := eventDataSysList{
-			ID: topic.GetID(),
+			ID:   topic.GetID(),
 			Type: topic.GetType(),
 		}
 
@@ -507,7 +507,7 @@ func (c *Client) sendInitMSG(onEvent onEventFunc) error {
 		topicData := eventDataSys{Type: "topics"}
 		for _, topic := range topics {
 			topicData.List = append(topicData.List, eventDataSysList{
-				ID: topic.GetID(),
+				ID:   topic.GetID(),
 				Type: topic.GetType(),
 			})
 		}
@@ -561,7 +561,7 @@ func (c *Client) Start(ctx context.Context, onEvent onEventFunc) error {
 	}()
 
 	if err := c.sendInitMSG(onEvent); err != nil {
-		log.Errorf("[C:%s]: Error sending init message to client: %s", c.GetID(), err)
+		log.Warnf("[C:%s]: Warning sending init message to client: %s", c.GetID(), err)
 		return err
 	}
 

@@ -44,7 +44,7 @@ import (
 //     OnRemoveClient
 //     OnUnsubOfClient
 
-//HELPER FUNCTIONS:
+// HELPER FUNCTIONS:
 func contains(topics []*Topic, topic *Topic) bool {
 	for _, t := range topics {
 		if t == topic {
@@ -53,7 +53,6 @@ func contains(topics []*Topic, topic *Topic) bool {
 	}
 	return false
 }
-
 
 //---------------------------------------------------------------------
 // SSEPubSubService.
@@ -273,7 +272,7 @@ func TestClient_OnStatusChange(t *testing.T) {
 
 	expected_status := Waiting
 
-	counter	:= 0
+	counter := 0
 
 	client.OnStatusChange.Listen(func(status status) {
 		counter++
@@ -392,7 +391,6 @@ func TestClient_OnNewTopic(t *testing.T) {
 		t.Errorf("Expected 4, got %d", counter)
 	}
 
-
 }
 
 // OnNewPublicTopic
@@ -407,7 +405,6 @@ func TestClient_OnNewPublicTopic(t *testing.T) {
 
 	// Counter of how many times the event was triggered.
 	counter := 0
-	
 
 	// topic
 	var topic *Topic
@@ -690,8 +687,6 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 	c.OnRemoveTopic.Remove(id)
 	counter = 0
 
-
-
 	var topics []*Topic
 	topics = append(topics, s.NewPublicTopic())
 	topics = append(topics, c.NewPrivateTopic())
@@ -752,8 +747,6 @@ func TestClient_OnRemovePublicTopic(t *testing.T) {
 	if counter != 1 {
 		t.Errorf("Expected 1, got %d", counter)
 	}
-
-
 
 	topic = s.NewPublicTopic()
 	c.NewPrivateTopic()
@@ -1082,7 +1075,6 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 	tops := c.GetAllTopics()
 	log.Infof("topics: %d", len(tops))
 
-
 	c.OnUnsubFromTopic.Remove(id)
 	counter = 0
 
@@ -1347,7 +1339,6 @@ func TestTopic_OnNewClient(t *testing.T) {
 	topic.OnNewClient.Remove(id)
 	counter = 0
 
-
 	// Create a new group.
 	group := s.NewGroup()
 	topic = group.NewTopic()
@@ -1435,7 +1426,6 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	// Clear
 	topic.OnNewSubOfClient.Remove(id)
 	counter = 0
-
 
 	// Create a new group.
 	group := s.NewGroup()

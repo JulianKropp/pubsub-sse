@@ -9,7 +9,7 @@ import (
 
 // Group is a collection of topics.
 type Group struct {
-	id   string
+	id string
 
 	lock *sync.Mutex
 
@@ -20,9 +20,9 @@ type Group struct {
 	clients map[string]*Client
 
 	// Events:
-	OnNewClient *eventManager[*Client]
-	OnNewGroupTopic *eventManager[*Topic]
-	OnRemoveClient *eventManager[*Client]
+	OnNewClient        *eventManager[*Client]
+	OnNewGroupTopic    *eventManager[*Topic]
+	OnRemoveClient     *eventManager[*Client]
 	OnRemoveGroupTopic *eventManager[*Topic]
 }
 
@@ -34,16 +34,16 @@ type GroupTopic struct {
 
 func newGroup() *Group {
 	return &Group{
-		id:   uuid.New().String(),
+		id: uuid.New().String(),
 
 		lock: &sync.Mutex{},
 
 		topics:  map[string]*Topic{},
 		clients: map[string]*Client{},
 
-		OnNewClient: newEventManager[*Client](),
-		OnNewGroupTopic: newEventManager[*Topic](),
-		OnRemoveClient: newEventManager[*Client](),	
+		OnNewClient:        newEventManager[*Client](),
+		OnNewGroupTopic:    newEventManager[*Topic](),
+		OnRemoveClient:     newEventManager[*Client](),
 		OnRemoveGroupTopic: newEventManager[*Topic](),
 	}
 }
@@ -119,7 +119,7 @@ func (g *Group) NewTopic() *Topic {
 	// Inform all clients about the new topic
 	for _, c := range g.GetClients() {
 		if err := c.sendTopicList(); err != nil {
-			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
 		}
 
 		// Event:
@@ -168,7 +168,7 @@ func (g *Group) RemoveTopic(t *Topic) {
 	// Unsuscribe all clients from the topic
 	for _, c := range t.GetClients() {
 		if err := c.Unsub(t); err != nil {
-			log.Errorf("[C:%s]: Error unsuscribing client from topic: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning unsuscribing client from topic: %s", c.id, err)
 		}
 	}
 
@@ -180,7 +180,7 @@ func (g *Group) RemoveTopic(t *Topic) {
 	// Inform all clients about the removed topic
 	for _, c := range g.GetClients() {
 		if err := c.sendTopicList(); err != nil {
-			log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
 		}
 
 		// Event:
@@ -218,7 +218,7 @@ func (g *Group) AddClient(c *Client) {
 
 	// Inform client about the new topic
 	if err := c.sendTopicList(); err != nil {
-		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
+		log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
 	}
 
 	// Event:
@@ -244,7 +244,7 @@ func (g *Group) RemoveClient(c *Client) {
 	// Unsubscribe client from all group topics
 	for _, t := range g.GetTopics() {
 		if err := c.Unsub(t); err != nil {
-			log.Errorf("[C:%s]: Error unsuscribing client from topic: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning unsuscribing client from topic: %s", c.id, err)
 		}
 
 		// Event:
@@ -261,7 +261,7 @@ func (g *Group) RemoveClient(c *Client) {
 
 	// Inform client about the removed topic
 	if err := c.sendTopicList(); err != nil {
-		log.Errorf("[C:%s]: Error sending new topic to client: %s", c.id, err)
+		log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
 	}
 
 	// Event:

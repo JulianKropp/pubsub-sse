@@ -24,11 +24,11 @@ type Topic struct {
 	lock    sync.Mutex
 
 	// Events:
-	OnNewClient *eventManager[*Client]
+	OnNewClient      *eventManager[*Client]
 	OnNewSubOfClient *eventManager[*Client]
-	OnPub *eventManager[interface{}]
-	OnRemoveClient *eventManager[*Client]
-	OnUnsubOfClient *eventManager[*Client]
+	OnPub            *eventManager[interface{}]
+	OnRemoveClient   *eventManager[*Client]
+	OnUnsubOfClient  *eventManager[*Client]
 }
 
 // Create a new topic
@@ -39,11 +39,11 @@ func newTopic(ttype topicType) *Topic {
 		clients: make(map[string]*Client),
 
 		// Events:
-		OnNewClient: newEventManager[*Client](),
+		OnNewClient:      newEventManager[*Client](),
 		OnNewSubOfClient: newEventManager[*Client](),
-		OnPub: newEventManager[interface{}](),
-		OnRemoveClient: newEventManager[*Client](),
-		OnUnsubOfClient: newEventManager[*Client](),
+		OnPub:            newEventManager[interface{}](),
+		OnRemoveClient:   newEventManager[*Client](),
+		OnUnsubOfClient:  newEventManager[*Client](),
 	}
 }
 
@@ -118,7 +118,7 @@ type eventDataSys struct {
 }
 
 type eventDataSysList struct {
-	ID string `json:"id"`
+	ID   string `json:"id"`
 	Type string `json:"type,omitempty"` // topics, subscribed, unsubscribed
 }
 
@@ -143,7 +143,7 @@ func (t *Topic) Pub(msg interface{}) error {
 	for _, c := range t.GetClients() {
 		err := c.send(fulldata) // ignore error. Fire and forget.
 		if err != nil {
-			log.Errorf("[T:%s]: Error sending data to client: %s", t.GetID(), err.Error())
+			log.Warnf("[T:%s]: Warning sending data to client: %s", t.GetID(), err.Error())
 		}
 	}
 
