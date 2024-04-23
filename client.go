@@ -11,10 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type status int
+type Status int
 
 const (
-	Waiting status = iota
+	Waiting Status = iota
 	Receving
 )
 
@@ -23,7 +23,7 @@ type onEventFunc func(string)
 // Client represents a subscriber with a channel to send messages.
 type Client struct {
 	id     string
-	status status
+	status Status
 
 	stream chan string
 
@@ -38,7 +38,7 @@ type Client struct {
 	groups map[string]*Group
 
 	// Events:
-	OnStatusChange       *eventManager[status]
+	OnStatusChange       *eventManager[Status]
 	OnNewTopic           *eventManager[*Topic]
 	OnNewPublicTopic     *eventManager[*Topic]
 	OnNewPrivateTopic    *eventManager[*Topic]
@@ -72,7 +72,7 @@ func newClient(sSEPubSubService *SSEPubSubService) *Client {
 		groups: make(map[string]*Group),
 
 		// Events:
-		OnStatusChange:       newEventManager[status](),
+		OnStatusChange:       newEventManager[Status](),
 		OnNewTopic:           newEventManager[*Topic](),
 		OnNewPublicTopic:     sSEPubSubService.OnNewPublicTopic,
 		OnNewPrivateTopic:    newEventManager[*Topic](),
@@ -116,7 +116,7 @@ func (c *Client) GetID() string {
 }
 
 // Change status
-func (c *Client) changeStatus(s status) {
+func (c *Client) changeStatus(s Status) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -127,7 +127,7 @@ func (c *Client) changeStatus(s status) {
 }
 
 // Get Status
-func (c *Client) GetStatus() status {
+func (c *Client) GetStatus() Status {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

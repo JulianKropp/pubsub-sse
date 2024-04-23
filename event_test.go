@@ -274,7 +274,7 @@ func TestClient_OnStatusChange(t *testing.T) {
 
 	counter := 0
 
-	client.OnStatusChange.Listen(func(status status) {
+	client.OnStatusChange.Listen(func(status Status) {
 		counter++
 		if status != expected_status {
 			t.Errorf("Expected %d, got %d", expected_status, status)
