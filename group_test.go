@@ -121,7 +121,7 @@ func TestGroup_NewTopic(t *testing.T) {
 	if topic == nil {
 		t.Error("NewTopic returned nil")
 	}
-	if topic.GetID() != topic.id {
+	if topic != nil && topic.GetID() != topic.id {
 		t.Error("NewTopic returned the wrong name")
 	}
 }
