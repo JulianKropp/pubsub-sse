@@ -21,6 +21,24 @@ const (
 	Stopped
 )
 
+// Convert status to string
+func StatusToString(s Status) string {
+	switch s {
+	case Created:
+		return "Created"
+	case Waiting:
+		return "Waiting"
+	case Receiving:
+		return "Receiving"
+	case Timeout:
+		return "Timeout"
+	case Stopped:
+		return "Stopped"
+	default:
+		return "Unknown"
+	}
+}
+
 type onEventFunc func(string)
 
 // Client represents a subscriber with a channel to send messages.
@@ -60,7 +78,7 @@ type Client struct {
 
 // Create a new client
 func newClient(sSEPubSubService *SSEPubSubService) *Client {
-	return &Client{
+	c := &Client{
 		id:     "C-" + uuid.New().String(),
 		status: Created,
 
@@ -93,6 +111,11 @@ func newClient(sSEPubSubService *SSEPubSubService) *Client {
 		OnRemoveGroup:        newEventManager[*Group](),
 		OnUnsubFromTopic:     newEventManager[*Topic](),
 	}
+
+	// Start TimeoutCheck
+	c.timeoutCheck()
+
+	return c
 }
 
 // Stop the client from receiving messages over the event stream
@@ -134,17 +157,23 @@ func (c *Client) changeStatus(s Status) {
 
 	// Start TimeoutCheck
 	if s == Waiting {
-		go func() {
-			time.Sleep(c.clientTimout)
-			if c.GetStatus() == Waiting {
-				c.changeStatus(Timeout)
-			}
-		}()
+		c.timeoutCheck()
 	}
 
 	// Emit event
 	c.OnStatusChange.Emit(c.status)
 }
+
+// Timeout check
+func (c *Client) timeoutCheck() {
+	go func() {
+		time.Sleep(c.clientTimout)
+		if c.GetStatus() != Receiving && c.GetStatus() != Stopped {
+			c.changeStatus(Timeout)
+		}
+	}()
+}
+
 
 // Get Status
 func (c *Client) GetStatus() Status {
