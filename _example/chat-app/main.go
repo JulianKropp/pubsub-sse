@@ -18,21 +18,41 @@ func main() {
 	Server := NewServer(8080)
 	PublicChatRoom := Server.NewChatRoom()
 
-	// Handle special endpoints
-	Server.http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { AddClient(PublicChatRoom, w, r) }) // Add client endpoint
+	// Handle endpoint
+	// handle favorite icon for all paths
+	Server.http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "./web/favicon.ico") }) // Serve favicon.ico
+	Server.http.Handle("/", http.FileServer(http.Dir("./web")))                                                           // Serve static files
+	Server.http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "chat.html") }) // Serve chat.html
+	Server.http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Event(Server.ssePubSub, w, r) }) // Event SSE endpoint
+	Server.http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) { Join(Server, w, r) }) // Add client endpoint
 	Server.Start()
 
 	time.Sleep(500 * time.Second)
 }
 
-func AddClient(c *ChatRoom, w http.ResponseWriter, r *http.Request) {
+func Join(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	// Get username and chatroom_id from request
+	username := r.URL.Query().Get("username")
+	chatroom_id := r.URL.Query().Get("chatroom_id")
+
+	if username == "" {
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "Invalid username"})
+		return
+	}
+	if Server.chatRooms[chatroom_id] == nil {
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "Invalid chatroom_id"})
+		return
+	}
 
 	// Create a new user
 	user := c.NewUser("User")
 
+
+
 	// Send the client ID
-	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "client_id": user.client.GetID()})
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "client_id": user.client.GetID(), "user_id": user.Id})
 }
 
 type Server struct {
@@ -60,6 +80,7 @@ type User struct {
 	lock sync.Mutex `json:"-"`
 
 	Id     string            `json:"id"`
+	Client_id string         `json:"-"`
 	Name   string            `json:"name"`
 	client *pubsubsse.Client `json:"-"`
 }
@@ -84,10 +105,6 @@ func NewServer(port int) *Server {
 		ssePubSub: ssePubSub,
 		chatRooms: make(map[string]*ChatRoom),
 	}
-
-	// Handle endpoint
-	s.http.Handle("/", http.FileServer(http.Dir("./web")))                                                           // Serve static files
-	s.http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Event(s.ssePubSub, w, r) }) // Event SSE endpoint
 
 	return s
 }
@@ -127,6 +144,7 @@ func (c *ChatRoom) NewUser(name string) *User {
 	user := &User{
 		lock:   sync.Mutex{},
 		Id:     "U-" + uuid.New().String(),
+		Client_id: client.GetID(),
 		Name:   name,
 		client: client,
 	}
@@ -145,7 +163,7 @@ func (c *ChatRoom) NewUser(name string) *User {
 	// If client disconnects remove client after 10s and delete the listener
 	var onStatusChangeID string
 	onStatusChangeID = client.OnStatusChange.Listen(func(status pubsubsse.Status) {
-		log.Infof("[sys]: Client status change: %s", status)
+		log.Infof("[sys]: Client status change: %s", pubsubsse.StatusToString(status))
 
 		if client.GetStatus() == pubsubsse.Timeout || client.GetStatus() == pubsubsse.Stopped {
 			log.Infof("[sys]: Client Timed out: %s", client.GetID())
