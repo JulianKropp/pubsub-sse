@@ -283,9 +283,9 @@ func TestInstance_OnStatusChange(t *testing.T) {
 	instance.OnStatusChange.Listen(func(status Status) {
 		counter++
 		expectedStatus := <-expectedStatuses // Receive the next expected status
-		t.Log("Status:", status)
+		t.Log("Status:", StatusToString(status))
 		if status != expectedStatus {
-			t.Errorf("Expected %d, got %d", expectedStatus, status)
+			t.Errorf("Expected %s, got %s", StatusToString(expectedStatus), StatusToString(status))
 		}
 	})
 
@@ -305,11 +305,13 @@ func TestInstance_OnStatusChange(t *testing.T) {
 		t.Errorf("Expected 3 status changes, got %d", counter)
 	}
 
+	ssePubSub.SetInstanceTimeout(10 * time.Second)
 	instance2 := ssePubSub.NewInstance()
 	counter = 0
 
 	instance2.OnStatusChange.Listen(func(status Status) {
 		counter++
+		t.Log("Status:", StatusToString(status))
 		if status != Stopped {
 			t.Errorf("Expected %d, got %d", Stopped, status)
 		}

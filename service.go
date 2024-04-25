@@ -89,15 +89,17 @@ func (s *SSEPubSubService) NewInstance(c ...*Connection) *Instance {
 
 // Remove instance
 func (s *SSEPubSubService) RemoveInstance(i *Instance) {
-	i.connection.removeInstance(i)
+	if len(i.connection.GetInstances()) - 1 == 0 {
+		// stop the instance
+		i.connection.stop(Stopped)
 
-	if len(i.connection.GetInstances()) == 0 {
+		i.connection.removeInstance(i)
+
 		s.lock.Lock()
 		delete(s.connections, i.connection.GetID())
 		s.lock.Unlock()
-
-		// stop the instance
-		i.connection.stop(Stopped)
+	} else {
+		i.connection.removeInstance(i)
 	}
 }
 

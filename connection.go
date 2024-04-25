@@ -191,7 +191,8 @@ func (c *Connection) removeInstance(i *Instance) {
 
 // Stop the instance from receiving messages over the event stream
 func (c *Connection) stop(status ...Status) {
-	if c.GetStatus() == Waiting || c.GetStatus() == Timeout || c.GetStatus() == Stopped {
+	st := c.GetStatus()
+	if st == Waiting || st == Timeout || st == Stopped {
 		return
 	}
 
@@ -247,7 +248,7 @@ func (c *Connection) changeStatus(s Status) {
 		c.timeoutCheck()
 	}
 
-	log.Infof("[C:%s]: Status changed to %s", c.GetID(), s)
+	log.Infof("[C:%s]: Status changed to %s", c.GetID(), StatusToString(s))
 
 	// Emit event
 	for _, i := range c.GetInstances() {
