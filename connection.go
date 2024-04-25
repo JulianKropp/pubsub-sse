@@ -21,6 +21,24 @@ const (
 	Stopped
 )
 
+// Convert status to string
+func StatusToString(s Status) string {
+	switch s {
+	case Created:
+		return "Created"
+	case Waiting:
+		return "Waiting"
+	case Receiving:
+		return "Receiving"
+	case Timeout:
+		return "Timeout"
+	case Stopped:
+		return "Stopped"
+	default:
+		return "Unknown"
+	}
+}
+
 type onEventFunc func(string)
 
 type Connection struct {
@@ -77,9 +95,11 @@ func (s *SSEPubSubService) newConnection() *Connection {
 
 		stream: make(chan string, 100),
 
+		sSEPubSubService: s,
+
 		lock: sync.Mutex{},
 
-		connectionTimout: 5 * time.Second,
+		connectionTimout: s.GetInstanceTimeout(),
 
 		stopchan: nil,
 
@@ -89,7 +109,7 @@ func (s *SSEPubSubService) newConnection() *Connection {
 
 // Create a new instance
 func (c *Connection) newInstance() *Instance {
-	return &Instance{
+	in := &Instance{
 		lock: sync.Mutex{},
 
 		id: "I-" + uuid.New().String(),
@@ -115,6 +135,15 @@ func (c *Connection) newInstance() *Instance {
 		OnRemoveGroup:        newEventManager[*Group](),
 		OnUnsubFromTopic:     newEventManager[*Topic](),
 	}
+
+	// Lock the connection
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	// Add instance to the connection
+	c.instances[in.GetID()] = in
+
+	return in
 }
 
 // Remove instance
@@ -215,12 +244,7 @@ func (c *Connection) changeStatus(s Status) {
 
 	// Start TimeoutCheck
 	if s == Waiting {
-		go func() {
-			time.Sleep(c.connectionTimout)
-			if c.GetStatus() == Waiting {
-				c.changeStatus(Timeout)
-			}
-		}()
+		c.timeoutCheck()
 	}
 
 	log.Infof("[C:%s]: Status changed to %s", c.GetID(), s)
@@ -229,6 +253,16 @@ func (c *Connection) changeStatus(s Status) {
 	for _, i := range c.GetInstances() {
 		i.OnStatusChange.Emit(c.status)
 	}
+}
+
+// Timeout check
+func (c *Connection) timeoutCheck() {
+	go func() {
+		time.Sleep(c.connectionTimout)
+		if c.GetStatus() != Receiving && c.GetStatus() != Stopped {
+			c.changeStatus(Timeout)
+		}
+	}()
 }
 
 func (i *Instance) GetStatus() Status {

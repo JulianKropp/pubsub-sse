@@ -81,6 +81,9 @@ func (s *SSEPubSubService) NewInstance(c ...*Connection) *Instance {
 		t.OnNewInstance.Emit(i)
 	}
 
+	// Start TimeoutCheck
+	con.timeoutCheck()
+
 	return i
 }
 
