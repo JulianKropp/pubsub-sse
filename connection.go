@@ -37,7 +37,7 @@ type Connection struct {
 
 	connectionTimout time.Duration
 
-	// Clients
+	// Instances
 	instances map[string]*Instance
 }
 
@@ -54,7 +54,7 @@ type Instance struct {
 	groups map[string]*Group
 
 	// Events:
-	OnStatusChange *eventManager[Status]
+	OnStatusChange       *eventManager[Status]
 	OnNewTopic           *eventManager[*Topic]
 	OnNewPublicTopic     *eventManager[*Topic]
 	OnNewPrivateTopic    *eventManager[*Topic]
@@ -87,7 +87,7 @@ func (s *SSEPubSubService) newConnection() *Connection {
 	}
 }
 
-// Create a new client
+// Create a new instance
 func (c *Connection) newInstance() *Instance {
 	return &Instance{
 		lock: sync.Mutex{},
@@ -101,7 +101,7 @@ func (c *Connection) newInstance() *Instance {
 		groups: make(map[string]*Group),
 
 		// Events:
-		OnStatusChange: newEventManager[Status](),
+		OnStatusChange:       newEventManager[Status](),
 		OnNewTopic:           newEventManager[*Topic](),
 		OnNewPublicTopic:     c.sSEPubSubService.OnNewPublicTopic,
 		OnNewPrivateTopic:    newEventManager[*Topic](),
@@ -120,8 +120,8 @@ func (c *Connection) newInstance() *Instance {
 // Remove instance
 // 1. Unsubscribe from all topics
 // 2. Remove all private topics
-// 3. Stop the client
-// 4. Remove client from sSEPubSubService
+// 3. Stop the instance
+// 4. Remove instance from sSEPubSubService
 func (c *Connection) removeInstance(i *Instance) {
 	// Unsubscribe from all topics
 	alltopics := i.GetAllTopics()
@@ -135,7 +135,7 @@ func (c *Connection) removeInstance(i *Instance) {
 	for _, t := range i.GetPublicTopics() {
 		i.OnRemoveTopic.Emit(t)
 		i.OnRemovePublicTopic.Emit(t)
-		t.OnRemoveClient.Emit(i)
+		t.OnRemoveInstance.Emit(i)
 	}
 
 	// Remove all private topics
@@ -146,21 +146,21 @@ func (c *Connection) removeInstance(i *Instance) {
 	// Remove all groups
 	groups := i.GetGroups()
 	for _, g := range groups {
-		g.RemoveClient(i)
+		g.RemoveInstance(i)
 	}
 
 	// Lock the sSEPubSubService
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	// Remove client from sSEPubSubService
+	// Remove instance from sSEPubSubService
 	delete(c.instances, i.GetID())
 
 	// Emit event
-	c.sSEPubSubService.OnRemoveClient.Emit(i)
+	c.sSEPubSubService.OnRemoveInstance.Emit(i)
 }
 
-// Stop the client from receiving messages over the event stream
+// Stop the instance from receiving messages over the event stream
 func (c *Connection) stop(status ...Status) {
 	if c.GetStatus() == Waiting || c.GetStatus() == Timeout || c.GetStatus() == Stopped {
 		return
@@ -169,11 +169,11 @@ func (c *Connection) stop(status ...Status) {
 	if len(status) > 0 {
 		c.changeStatus(status[0])
 	} else {
-		// Stop the client
+		// Stop the instance
 		c.changeStatus(Stopped)
 	}
 
-	// Lock the client
+	// Lock the instance
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -380,8 +380,8 @@ func (i *Instance) GetSubscribedTopics() map[string]*Topic {
 // New private topic
 // 0. Check if topic already exists, return it if it does
 // 1. Create a new private topic
-// 2. Add the topic to the client
-// 3. Inform the client about the new topic
+// 2. Add the topic to the instance
+// 3. Inform the instance about the new topic
 func (i *Instance) NewPrivateTopic() *Topic {
 	t := newTopic(TPrivate)
 
@@ -389,15 +389,15 @@ func (i *Instance) NewPrivateTopic() *Topic {
 	i.privateTopics[t.GetID()] = t
 	i.lock.Unlock()
 
-	// Inform the client about the new topic
+	// Inform the instance about the new topic
 	if err := i.sendTopicList(); err != nil {
-		log.Warnf("[C:%s]: Warning sending new topic to client: %s", i.GetID(), err)
+		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", i.GetID(), err)
 	}
 
 	// Emit event
 	i.OnNewTopic.Emit(t)
 	i.OnNewPrivateTopic.Emit(t)
-	t.OnNewClient.Emit(i)
+	t.OnNewInstance.Emit(i)
 
 	return t
 }
@@ -405,8 +405,8 @@ func (i *Instance) NewPrivateTopic() *Topic {
 // Remove private topic
 // 0. Check if topic exists, return error if it does not
 // 1. Unsubscribe from the topic
-// 2. Remove the topic from the client
-// 3. Inform the client about the removed topic by sending the new topic list
+// 2. Remove the topic from the instance
+// 3. Inform the instance about the removed topic by sending the new topic list
 func (i *Instance) RemovePrivateTopic(t *Topic) {
 	// if topic does not exist, return
 	if _, ok := i.GetPrivateTopicByID(t.GetID()); !ok {
@@ -414,39 +414,39 @@ func (i *Instance) RemovePrivateTopic(t *Topic) {
 		return
 	}
 
-	// Remove this topic from all clients
-	for _, i := range t.GetClients() {
+	// Remove this topic from all instances
+	for _, i := range t.GetInstances() {
 		i.Unsub(t) // Try to unsubscribe from the topic
 	}
 
-	// Remove topic from client
+	// Remove topic from instance
 	i.lock.Lock()
 	delete(i.privateTopics, t.GetID())
 	i.lock.Unlock()
 
-	// Inform the client about the removed topic by sending the new topic list
+	// Inform the instance about the removed topic by sending the new topic list
 	if err := i.sendTopicList(); err != nil {
-		log.Warnf("[C:%s]: Warning sending new topic to client: %s", i.GetID(), err)
+		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", i.GetID(), err)
 	}
 
 	// Emit event
 	i.OnRemoveTopic.Emit(t)
 	i.OnRemovePrivateTopic.Emit(t)
-	t.OnRemoveClient.Emit(i)
+	t.OnRemoveInstance.Emit(i)
 }
 
 // Subscribe to a topic
-// 1. If client can subscribe to this topic, add client to topic and return nil
-// 2. Inform the client about the new topic by sending this topic as subscribed
+// 1. If instance can subscribe to this topic, add instance to topic and return nil
+// 2. Inform the instance about the new topic by sending this topic as subscribed
 func (i *Instance) Sub(topic *Topic) error {
-	// if topic exists, add client to topic and return nil
+	// if topic exists, add instance to topic and return nil
 	if t, ok := i.GetTopicByID(topic.GetID()); ok {
 		if topic == t {
-			t.addClient(i)
+			t.addInstance(i)
 
-			// Inform the client about the new topic by sending this topic as subscribed
+			// Inform the instance about the new topic by sending this topic as subscribed
 			if err := i.sendSubscribedTopic(t); err != nil {
-				log.Warnf("[C:%s]: Warning sending new topic to client: %s", i.GetID(), err)
+				log.Warnf("[C:%s]: Warning sending new topic to instance: %s", i.GetID(), err)
 			}
 
 			// Emit event
@@ -456,24 +456,24 @@ func (i *Instance) Sub(topic *Topic) error {
 		}
 	}
 
-	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not subscribe to it", i.GetID(), topic.GetID())
+	return fmt.Errorf("[C:%s]: topic %s does not exist or instance can not subscribe to it", i.GetID(), topic.GetID())
 }
 
 // Unsubscribe from a topic
-// 1. If client is subscribed to this topic, remove client from topic and return nil
-// 2. Inform the client about the new topic by sending this topic as unsubscribed
+// 1. If instance is subscribed to this topic, remove instance from topic and return nil
+// 2. Inform the instance about the new topic by sending this topic as unsubscribed
 func (i *Instance) Unsub(topic *Topic) error {
-	// if topic exists and client is subscribed to it, remove client from topic and return nil
+	// if topic exists and instance is subscribed to it, remove instance from topic and return nil
 	if t, ok := i.GetTopicByID(topic.GetID()); ok {
 		if topic == t {
 			if !t.IsSubscribed(i) {
-				return fmt.Errorf("[C:%s]: client is not subscribed to topic %s", i.GetID(), topic.GetID())
+				return fmt.Errorf("[C:%s]: instance is not subscribed to topic %s", i.GetID(), topic.GetID())
 			}
-			t.removeClient(i)
+			t.removeInstance(i)
 
-			// Inform the client about the new topic by sending this topic as unsubscribed
+			// Inform the instance about the new topic by sending this topic as unsubscribed
 			if err := i.sendUnsubscribedTopic(t); err != nil {
-				log.Warnf("[C:%s]: Warning sending new topic to client: %s", i.GetID(), err)
+				log.Warnf("[C:%s]: Warning sending new topic to instance: %s", i.GetID(), err)
 			}
 
 			// Emit event
@@ -483,16 +483,16 @@ func (i *Instance) Unsub(topic *Topic) error {
 		}
 	}
 
-	return fmt.Errorf("[C:%s]: topic %s does not exist or client can not unsubscribe from it", i.GetID(), topic.GetID())
+	return fmt.Errorf("[C:%s]: topic %s does not exist or instance can not unsubscribe from it", i.GetID(), topic.GetID())
 }
 
 func (i *Instance) send(msg interface{}) error {
 	return i.connection.send(msg)
 }
 
-// send a message to the client
+// send a message to the instance
 // 1. Marshal the data
-// 2. Put the data into the stream to send it to the client
+// 2. Put the data into the stream to send it to the instance
 func (c *Connection) send(msg interface{}) error {
 	// Marshal the data
 	jsonData, err := json.Marshal(msg)
@@ -516,13 +516,13 @@ func (c *Connection) send(msg interface{}) error {
 				time.Sleep(10 * time.Millisecond)
 			}
 		}
-		// handle the case where the channel is full or the client is not receiving
+		// handle the case where the channel is full or the instance is not receiving
 		return fmt.Errorf("[C:%s]: stream is full", c.GetID())
 	}
-	return fmt.Errorf("[C:%s]: client is not receiving", c.GetID())
+	return fmt.Errorf("[C:%s]: instance is not receiving", c.GetID())
 }
 
-// sendTopicList sends a message to the client to inform it about the topics
+// sendTopicList sends a message to the instance to inform it about the topics
 func (i *Instance) sendTopicList() error {
 	// Get all topics
 	topics := i.GetAllTopics()
@@ -554,7 +554,7 @@ func (i *Instance) sendTopicList() error {
 		fulldata.InstanceData[0].Data.Sys[0].List = append(fulldata.InstanceData[0].Data.Sys[0].List, t)
 	}
 
-	// Send the JSON data to the client
+	// Send the JSON data to the instance
 	if err := i.connection.send(fulldata); err != nil {
 		return err
 	}
@@ -562,7 +562,7 @@ func (i *Instance) sendTopicList() error {
 	return nil
 }
 
-// sendSubscribedTopic sends a message to the client to inform it about the subscribed topic
+// sendSubscribedTopic sends a message to the instance to inform it about the subscribed topic
 func (i *Instance) sendSubscribedTopic(topic *Topic) error {
 	// Build the JSON data
 	fulldata := &connectionData{
@@ -585,7 +585,7 @@ func (i *Instance) sendSubscribedTopic(topic *Topic) error {
 		},
 	}
 
-	// Send the JSON data to the client
+	// Send the JSON data to the instance
 	if err := i.connection.send(fulldata); err != nil {
 		return err
 	}
@@ -593,7 +593,7 @@ func (i *Instance) sendSubscribedTopic(topic *Topic) error {
 	return nil
 }
 
-// sendUnsubscribedTopic sends a message to the client to inform it about the unsubscribed topic
+// sendUnsubscribedTopic sends a message to the instance to inform it about the unsubscribed topic
 func (i *Instance) sendUnsubscribedTopic(topic *Topic) error {
 	// Build the JSON data
 	fulldata := &connectionData{
@@ -616,7 +616,7 @@ func (i *Instance) sendUnsubscribedTopic(topic *Topic) error {
 		},
 	}
 
-	// Send the JSON data to the client
+	// Send the JSON data to the instance
 	if err := i.connection.send(fulldata); err != nil {
 		return err
 	}
@@ -624,7 +624,7 @@ func (i *Instance) sendUnsubscribedTopic(topic *Topic) error {
 	return nil
 }
 
-// sendInitMSG generates the initial message to send to the client
+// sendInitMSG generates the initial message to send to the instance
 // It contains all topics and subscribed topics
 func (c *Connection) sendInitMSG(onEvent onEventFunc) error {
 	fullData := &connectionData{
@@ -635,12 +635,12 @@ func (c *Connection) sendInitMSG(onEvent onEventFunc) error {
 	for _, i := range c.instances {
 		topics := i.GetAllTopics()
 		subtopics := i.GetSubscribedTopics()
-	
+
 		// Build the JSON data
 		instancedata := &eventData{
 			Sys: make([]eventDataSys, 0, 2),
 		}
-	
+
 		// Append topics data
 		if len(topics) > 0 {
 			topicData := eventDataSys{Type: "topics"}
@@ -652,7 +652,7 @@ func (c *Connection) sendInitMSG(onEvent onEventFunc) error {
 			}
 			instancedata.Sys = append(instancedata.Sys, topicData)
 		}
-	
+
 		// Append subscribed topics data
 		if len(subtopics) > 0 {
 			subTopicData := eventDataSys{Type: "subscribed"}
@@ -676,7 +676,7 @@ func (c *Connection) sendInitMSG(onEvent onEventFunc) error {
 
 	onEvent("data: " + string(jsonData) + "\n\n")
 
-	// Send JSON data to the client
+	// Send JSON data to the instance
 	return err
 }
 
@@ -684,17 +684,17 @@ func (i *Instance) Start(ctx context.Context, onEvent onEventFunc) error {
 	return i.connection.Start(ctx, onEvent)
 }
 
-// Start the client
-// 0. Check if client is already receiving
+// Start the instance
+// 0. Check if instance is already receiving
 // 1. Set status to Receving and create stop channel
-// 2. Send init message to client
+// 2. Send init message to instance
 // 3. Keep the connection open
-// 4. Send message to client if new data is published over the stream
-// 5. Stop the client if the stop channel is closed
+// 4. Send message to instance if new data is published over the stream
+// 5. Stop the instance if the stop channel is closed
 func (c *Connection) Start(ctx context.Context, onEvent onEventFunc) error {
 	// Set status to Receving and create stop channel
 	if c.GetStatus() == Receiving {
-		return fmt.Errorf("[C:%s]: Client is already receiving", c.GetID())
+		return fmt.Errorf("[C:%s]: Instance is already receiving", c.GetID())
 	}
 
 	// Set status to Receving and create stop channel
@@ -704,32 +704,32 @@ func (c *Connection) Start(ctx context.Context, onEvent onEventFunc) error {
 	c.stream = make(chan string)
 	c.lock.Unlock()
 
-	// Stop the client at the end
+	// Stop the instance at the end
 	defer func() {
 		c.stop(Waiting)
 	}()
 
 	if err := c.sendInitMSG(onEvent); err != nil {
-		log.Warnf("[C:%s]: Warning sending init message to client: %s", c.GetID(), err)
+		log.Warnf("[C:%s]: Warning sending init message to instance: %s", c.GetID(), err)
 		return err
 	}
 
-	// Keep the connection open until it's closed by the client
+	// Keep the connection open until it's closed by the instance
 loop:
 	for {
 		select {
 		case msg, ok := <-c.stream:
 			if !ok {
-				log.Infof("[C:%s] Client stopped receiving", c.GetID())
+				log.Infof("[C:%s] Instance stopped receiving", c.GetID())
 				break loop
 			}
-			log.Infof("[C:%s] Sending message to client: %s", c.GetID(), msg)
+			log.Infof("[C:%s] Sending message to instance: %s", c.GetID(), msg)
 			onEvent(msg)
 		case <-ctx.Done():
-			log.Infof("[C:%s] Client stopped receiving", c.GetID())
+			log.Infof("[C:%s] Instance stopped receiving", c.GetID())
 			break loop
 		case <-c.stopchan:
-			log.Infof("[C:%s] Client stopped receiving", c.GetID())
+			log.Infof("[C:%s] Instance stopped receiving", c.GetID())
 			break loop
 		}
 	}

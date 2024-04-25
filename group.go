@@ -16,13 +16,13 @@ type Group struct {
 	// Topics is a map of topic IDs to topics.
 	topics map[string]*Topic
 
-	// Clients is a map of client IDs to clients.
-	clients map[string]*Instance
+	// Instances is a map of instance IDs to instances.
+	instances map[string]*Instance
 
 	// Events:
-	OnNewClient        *eventManager[*Instance]
+	OnNewInstance      *eventManager[*Instance]
 	OnNewGroupTopic    *eventManager[*Topic]
-	OnRemoveClient     *eventManager[*Instance]
+	OnRemoveInstance   *eventManager[*Instance]
 	OnRemoveGroupTopic *eventManager[*Topic]
 }
 
@@ -38,12 +38,12 @@ func newGroup() *Group {
 
 		lock: &sync.Mutex{},
 
-		topics:  map[string]*Topic{},
-		clients: map[string]*Instance{},
+		topics:    map[string]*Topic{},
+		instances: map[string]*Instance{},
 
-		OnNewClient:        newEventManager[*Instance](),
+		OnNewInstance:      newEventManager[*Instance](),
 		OnNewGroupTopic:    newEventManager[*Topic](),
-		OnRemoveClient:     newEventManager[*Instance](),
+		OnRemoveInstance:   newEventManager[*Instance](),
 		OnRemoveGroupTopic: newEventManager[*Topic](),
 	}
 }
@@ -80,34 +80,34 @@ func (g *Group) GetTopicByID(id string) (*Topic, bool) {
 	return t, ok
 }
 
-// GetClients returns a map of clients.
-func (g *Group) GetClients() map[string]*Instance {
+// GetInstances returns a map of instances.
+func (g *Group) GetInstances() map[string]*Instance {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	// Create a copy of the clients map
+	// Create a copy of the instances map
 	newmap := make(map[string]*Instance)
-	for k, v := range g.clients {
+	for k, v := range g.instances {
 		newmap[k] = v
 	}
 
-	// Return the clients
+	// Return the instances
 	return newmap
 }
 
-// Get client by ID
-func (g *Group) GetClientByID(id string) (*Instance, bool) {
+// Get instance by ID
+func (g *Group) GetInstanceByID(id string) (*Instance, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	c, ok := g.clients[id]
+	c, ok := g.instances[id]
 	return c, ok
 }
 
 // AddTopic adds a topic to the group.
 // 1. Check if topic already exists, return it if it does
 // 2. Add the topic to the group
-// 3. Inform all clients about the new topic
+// 3. Inform all instances about the new topic
 func (g *Group) NewTopic() *Topic {
 
 	// Create the topic
@@ -116,10 +116,10 @@ func (g *Group) NewTopic() *Topic {
 	g.topics[t.GetID()] = t
 	g.lock.Unlock()
 
-	// Inform all clients about the new topic
-	for _, c := range g.GetClients() {
+	// Inform all instances about the new topic
+	for _, c := range g.GetInstances() {
 		if err := c.sendTopicList(); err != nil {
-			log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning sending new topic to instance: %s", c.id, err)
 		}
 
 		// Event:
@@ -130,7 +130,7 @@ func (g *Group) NewTopic() *Topic {
 			Topic: t,
 		}
 		c.OnNewGroupTopic.Emit(gt)
-		t.OnNewClient.Emit(c)
+		t.OnNewInstance.Emit(c)
 	}
 
 	// Event:
@@ -142,9 +142,9 @@ func (g *Group) NewTopic() *Topic {
 // RemoveTopic removes a topic from the group.
 // 0. Check if topic is a group topic
 // 1. Check if topic exists in the group
-// 2. Unsuscribe all clients from the topic
+// 2. Unsuscribe all instances from the topic
 // 3. Remove topic from the group
-// 4. Inform all clients about the removed topic
+// 4. Inform all instances about the removed topic
 func (g *Group) RemoveTopic(t *Topic) {
 	// Check if topic is a group topic
 	if t.GetType() != string(TGroup) {
@@ -165,10 +165,10 @@ func (g *Group) RemoveTopic(t *Topic) {
 		return
 	}
 
-	// Unsuscribe all clients from the topic
-	for _, c := range t.GetClients() {
+	// Unsuscribe all instances from the topic
+	for _, c := range t.GetInstances() {
 		if err := c.Unsub(t); err != nil {
-			log.Warnf("[C:%s]: Warning unsuscribing client from topic: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning unsuscribing instance from topic: %s", c.id, err)
 		}
 	}
 
@@ -177,10 +177,10 @@ func (g *Group) RemoveTopic(t *Topic) {
 	delete(g.topics, t.GetID())
 	g.lock.Unlock()
 
-	// Inform all clients about the removed topic
-	for _, c := range g.GetClients() {
+	// Inform all instances about the removed topic
+	for _, c := range g.GetInstances() {
 		if err := c.sendTopicList(); err != nil {
-			log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning sending new topic to instance: %s", c.id, err)
 		}
 
 		// Event:
@@ -190,80 +190,80 @@ func (g *Group) RemoveTopic(t *Topic) {
 			Topic: t,
 		}
 		c.OnRemoveGroupTopic.Emit(gt)
-		t.OnRemoveClient.Emit(c)
+		t.OnRemoveInstance.Emit(c)
 	}
 
 	// Event:
 	g.OnRemoveGroupTopic.Emit(t)
 }
 
-// AddClient adds a client to the group.
-// 0. Check if client already exists in the group
-// 1. Add client to the group
-// 2. Add group to client
-func (g *Group) AddClient(c *Instance) {
-	// Check if client already exists in the group
-	if _, ok := g.GetClientByID(c.GetID()); ok {
-		log.Errorf("Client already exists in group")
+// AddInstance adds a instance to the group.
+// 0. Check if instance already exists in the group
+// 1. Add instance to the group
+// 2. Add group to instance
+func (g *Group) AddInstance(c *Instance) {
+	// Check if instance already exists in the group
+	if _, ok := g.GetInstanceByID(c.GetID()); ok {
+		log.Errorf("Instance already exists in group")
 		return
 	}
 
-	// Add client to the group
+	// Add instance to the group
 	g.lock.Lock()
-	g.clients[c.GetID()] = c
+	g.instances[c.GetID()] = c
 	g.lock.Unlock()
 
-	// Add group to client. This will inform the client of the new topics
+	// Add group to instance. This will inform the instance of the new topics
 	c.addGroup(g)
 
-	// Inform client about the new topic
+	// Inform instance about the new topic
 	if err := c.sendTopicList(); err != nil {
-		log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
+		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", c.id, err)
 	}
 
 	// Event:
-	g.OnNewClient.Emit(c)
+	g.OnNewInstance.Emit(c)
 	for _, t := range g.GetTopics() {
-		t.OnNewClient.Emit(c)
+		t.OnNewInstance.Emit(c)
 	}
 }
 
-// RemoveClient removes a client from the group.
-// 0. Check if client exists in the group
-// 1. Unsubscribe client from all group topics
-// 2. Remove client from the group
-// 3. Remove group from client
-// 4. Inform client about the removed topic
-func (g *Group) RemoveClient(c *Instance) {
-	// Check if client exists in the group
-	if _, ok := g.GetClientByID(c.GetID()); !ok {
-		log.Errorf("Client does not exist in group")
+// RemoveInstance removes a instance from the group.
+// 0. Check if instance exists in the group
+// 1. Unsubscribe instance from all group topics
+// 2. Remove instance from the group
+// 3. Remove group from instance
+// 4. Inform instance about the removed topic
+func (g *Group) RemoveInstance(c *Instance) {
+	// Check if instance exists in the group
+	if _, ok := g.GetInstanceByID(c.GetID()); !ok {
+		log.Errorf("Instance does not exist in group")
 		return
 	}
 
-	// Unsubscribe client from all group topics
+	// Unsubscribe instance from all group topics
 	for _, t := range g.GetTopics() {
 		if err := c.Unsub(t); err != nil {
-			log.Warnf("[C:%s]: Warning unsuscribing client from topic: %s", c.id, err)
+			log.Warnf("[C:%s]: Warning unsuscribing instance from topic: %s", c.id, err)
 		}
 
 		// Event:
-		t.OnRemoveClient.Emit(c)
+		t.OnRemoveInstance.Emit(c)
 	}
 
-	// Remove client from the group
+	// Remove instance from the group
 	g.lock.Lock()
-	delete(g.clients, c.GetID())
+	delete(g.instances, c.GetID())
 	g.lock.Unlock()
 
-	// Remove group from client
+	// Remove group from instance
 	c.removeGroup(g)
 
-	// Inform client about the removed topic
+	// Inform instance about the removed topic
 	if err := c.sendTopicList(); err != nil {
-		log.Warnf("[C:%s]: Warning sending new topic to client: %s", c.id, err)
+		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", c.id, err)
 	}
 
 	// Event:
-	g.OnRemoveClient.Emit(c)
+	g.OnRemoveInstance.Emit(c)
 }

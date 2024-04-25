@@ -6,10 +6,10 @@ import (
 )
 
 // Tests for:
-// +NewClient(): *client
-// +RemoveClient(c *client)
-// +GetClients(): map[string]*client
-// +GetClientByID(id string): *client, bool
+// +NewInstance(): *instance
+// +RemoveInstance(c *instance)
+// +GetInstances(): map[string]*instance
+// +GetInstanceByID(id string): *instance, bool
 
 // +NewGroup(ID string): *group
 // +RemoveGroup(g *group)
@@ -38,77 +38,77 @@ func TestNewSSEPubSubService(t *testing.T) {
 }
 
 // --------------------------------------------
-// Clients
+// Instances
 // --------------------------------------------
 
-// Create a new client and get it by id
-func TestSSEPubSubService_NewClient(t *testing.T) {
+// Create a new instance and get it by id
+func TestSSEPubSubService_NewInstance(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	clientc := ssePubSub.NewClient()
-	client, ok := ssePubSub.GetClientByID(clientc.GetID())
+	instancec := ssePubSub.NewInstance()
+	instance, ok := ssePubSub.GetInstanceByID(instancec.GetID())
 	if !ok {
-		t.Error("Client not created: not found")
+		t.Error("Instance not created: not found")
 	}
-	if client == nil {
-		t.Error("Client not created: nil")
+	if instance == nil {
+		t.Error("Instance not created: nil")
 	}
-	if clientc != client {
-		t.Error("Client not created: wrong pointer")
+	if instancec != instance {
+		t.Error("Instance not created: wrong pointer")
 	}
 }
 
-// Create a new client and remove it
-func TestSSEPubSubService_RemoveClient(t *testing.T) {
+// Create a new instance and remove it
+func TestSSEPubSubService_RemoveInstance(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	client := ssePubSub.NewClient()
-	ssePubSub.RemoveClient(client)
-	_, ok := ssePubSub.GetClientByID(client.GetID())
+	instance := ssePubSub.NewInstance()
+	ssePubSub.RemoveInstance(instance)
+	_, ok := ssePubSub.GetInstanceByID(instance.GetID())
 	if ok {
-		t.Error("Client not removed: found")
+		t.Error("Instance not removed: found")
 	}
-	if len(ssePubSub.GetClients()) != 0 {
-		t.Error("Client not removed: Multiple clients exist")
-	}
-}
-
-// Create a new client and get all clients
-func TestSSEPubSubService_GetClients(t *testing.T) {
-	ssePubSub := NewSSEPubSubService()
-	clientc := ssePubSub.NewClient()
-	clients := ssePubSub.GetClients()
-	if len(clients) != 1 {
-		t.Error("Clients not found")
-	}
-	if clients[clientc.GetID()] == nil {
-		t.Error("Client not found")
-	}
-	if clients[clientc.GetID()] != clientc {
-		t.Error("Client not found: wrong pointer")
+	if len(ssePubSub.GetInstances()) != 0 {
+		t.Error("Instance not removed: Multiple instances exist")
 	}
 }
 
-// Create a new client and get it by id
-func TestSSEPubSubService_GetClientByID(t *testing.T) {
+// Create a new instance and get all instances
+func TestSSEPubSubService_GetInstances(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	clientc := ssePubSub.NewClient()
-	client, ok := ssePubSub.GetClientByID(clientc.GetID())
+	instancec := ssePubSub.NewInstance()
+	instances := ssePubSub.GetInstances()
+	if len(instances) != 1 {
+		t.Error("Instances not found")
+	}
+	if instances[instancec.GetID()] == nil {
+		t.Error("Instance not found")
+	}
+	if instances[instancec.GetID()] != instancec {
+		t.Error("Instance not found: wrong pointer")
+	}
+}
+
+// Create a new instance and get it by id
+func TestSSEPubSubService_GetInstanceByID(t *testing.T) {
+	ssePubSub := NewSSEPubSubService()
+	instancec := ssePubSub.NewInstance()
+	instance, ok := ssePubSub.GetInstanceByID(instancec.GetID())
 	if !ok {
-		t.Error("Client not found")
+		t.Error("Instance not found")
 	}
-	if client == nil {
-		t.Error("Client not found: nil")
+	if instance == nil {
+		t.Error("Instance not found: nil")
 	}
-	if clientc != client {
-		t.Error("Client not found: wrong pointer")
+	if instancec != instance {
+		t.Error("Instance not found: wrong pointer")
 	}
 }
 
-// Test get/set client timout
-func TestSSEPubSubService_GetClientTimeout(t *testing.T) {
+// Test get/set instance timout
+func TestSSEPubSubService_GetInstanceTimeout(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	ssePubSub.SetClientTimeout(5 * time.Second)
-	if ssePubSub.GetClientTimeout() != 5*time.Second {
-		t.Error("Client timeout not set")
+	ssePubSub.SetInstanceTimeout(5 * time.Second)
+	if ssePubSub.GetInstanceTimeout() != 5*time.Second {
+		t.Error("Instance timeout not set")
 	}
 }
 

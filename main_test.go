@@ -31,15 +31,15 @@ func startEventServer(ssePubSub *SSEPubSubService, t *testing.T, port int) {
 
 // Makes an http request to localhost:8080/event
 // This will be an SSE connection and will be open for 10s
-func httpToEvent(t *testing.T, client *Instance, port int, connected, done chan bool, returnValue *[]eventData) {
-	hclient := http.Client{}
-	req, err := http.NewRequest("GET", "http://localhost:"+strconv.Itoa(port)+"/event?client_id="+client.GetID(), nil)
+func httpToEvent(t *testing.T, instance *Instance, port int, connected, done chan bool, returnValue *[]eventData) {
+	hinstance := http.Client{}
+	req, err := http.NewRequest("GET", "http://localhost:"+strconv.Itoa(port)+"/event?instance_id="+instance.GetID(), nil)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	resp, err := hclient.Do(req)
+	resp, err := hinstance.Do(req)
 	if err != nil {
 		t.Error(err)
 		return
@@ -61,7 +61,7 @@ func httpToEvent(t *testing.T, client *Instance, port int, connected, done chan 
 				t.Logf("Error reading from SSE stream: %s", err.Error())
 				return
 			}
-			t.Logf("%s message: %s\n", client.GetID(), line)
+			t.Logf("%s message: %s\n", instance.GetID(), line)
 			stream <- string(line)
 		}
 	}()
@@ -90,7 +90,7 @@ func httpToEvent(t *testing.T, client *Instance, port int, connected, done chan 
 				if !con {
 					con = true
 					connected <- true
-					t.Logf("ok: %s\n", client.GetID())
+					t.Logf("ok: %s\n", instance.GetID())
 				}
 
 				// Remove the "data: " from message

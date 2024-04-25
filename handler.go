@@ -8,16 +8,16 @@ import (
 	"github.com/apex/log"
 )
 
-// AddClient handles HTTP requests for adding a new client.
-func AddClient(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
+// AddInstance handles HTTP requests for adding a new instance.
+func AddInstance(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Create a new client
-	c := s.NewClient()
+	// Create a new instance
+	c := s.NewInstance()
 
-	// Send the client ID
+	// Send the instance ID
 
-	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "client_id": c.GetID()})
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "instance_id": c.GetID()})
 }
 
 // AddPublicTopic handles HTTP requests for adding a new public topic.
@@ -35,44 +35,44 @@ func AddPublicTopic(s *SSEPubSubService, w http.ResponseWriter, r *http.Request)
 func AddPrivateTopic(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// GET clientID and topic from request body
-	clientID := r.URL.Query().Get("client_id")
+	// GET instanceID and topic from request body
+	instanceID := r.URL.Query().Get("instance_id")
 
-	// Get the client
-	client, ok := s.GetClientByID(clientID)
+	// Get the instance
+	instance, ok := s.GetInstanceByID(instanceID)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 
-		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "client not found"})
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "instance not found"})
 		return
 	}
 
 	// Create a new private topic
-	t := client.NewPrivateTopic()
+	t := instance.NewPrivateTopic()
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "topic_id": t.GetID()})
 }
 
-// Subscribe handles HTTP requests for client subscriptions.
+// Subscribe handles HTTP requests for instance subscriptions.
 func Subscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// GET clientID and topic from request body
-	clientID := r.URL.Query().Get("client_id")
+	// GET instanceID and topic from request body
+	instanceID := r.URL.Query().Get("instance_id")
 	topic := r.URL.Query().Get("topic")
 
-	// Get the client
-	client, ok := s.GetClientByID(clientID)
+	// Get the instance
+	instance, ok := s.GetInstanceByID(instanceID)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 
-		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "client not found"})
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "instance not found"})
 		return
 	}
 
 	// Get the topic
-	t, ok := client.GetTopicByID(topic)
+	t, ok := instance.GetTopicByID(topic)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "topic not found"})
@@ -80,7 +80,7 @@ func Subscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Subscribe to the topic
-	if err := client.Sub(t); err != nil {
+	if err := instance.Sub(t); err != nil {
 		log.Errorf("Error subscribing to topic %s: %s", topic, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "internal server error"})
@@ -91,24 +91,24 @@ func Subscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
 }
 
-// Unsubscribe handles HTTP requests for client unsubscriptions.
+// Unsubscribe handles HTTP requests for instance unsubscriptions.
 func Unsubscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// GET clientID and topic from request body
-	clientID := r.URL.Query().Get("client_id")
+	// GET instanceID and topic from request body
+	instanceID := r.URL.Query().Get("instance_id")
 	topic := r.URL.Query().Get("topic")
 
-	// Get the client
-	client, ok := s.GetClientByID(clientID)
+	// Get the instance
+	instance, ok := s.GetInstanceByID(instanceID)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "client not found"})
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "instance not found"})
 		return
 	}
 
 	// Get the topic
-	t, ok := client.GetTopicByID(topic)
+	t, ok := instance.GetTopicByID(topic)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "topic not found"})
@@ -116,7 +116,7 @@ func Unsubscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unsubscribe from the topic
-	if err := client.Unsub(t); err != nil {
+	if err := instance.Unsub(t); err != nil {
 		log.Errorf("Error unsubscribing from topic %s: %s", topic, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "internal server error"})
@@ -131,22 +131,22 @@ func Unsubscribe(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 func Event(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// GET clientID and topic from request body
-	clientID := r.URL.Query().Get("client_id")
+	// GET instanceID and topic from request body
+	instanceID := r.URL.Query().Get("instance_id")
 
-	// Get the client
-	client, ok := s.GetClientByID(clientID)
+	// Get the instance
+	instance, ok := s.GetInstanceByID(instanceID)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "client not found"})
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "instance not found"})
 		return
 	}
 
-	// Test if client is already receiving
-	if client.GetStatus() == Receiving {
+	// Test if instance is already receiving
+	if instance.GetStatus() == Receiving {
 		w.WriteHeader(http.StatusBadRequest)
 
-		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "client is already receiving"})
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "instance is already receiving"})
 		return
 	}
 
@@ -159,9 +159,9 @@ func Event(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	// Get the request's context. If the connection closes, the context will be canceled.
 	ctx := r.Context()
 
-	// Keep the connection open until it's closed by the client or client is removed
-	// OnEvent: Send message to client if new data is published
-	client.Start(ctx, func(msg string) {
+	// Keep the connection open until it's closed by the instance or instance is removed
+	// OnEvent: Send message to instance if new data is published
+	instance.Start(ctx, func(msg string) {
 		fmt.Fprintf(w, "%s", msg)
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()

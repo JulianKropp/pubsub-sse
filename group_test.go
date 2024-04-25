@@ -9,12 +9,12 @@ import (
 // +GetID(): string
 // +GetTopics(): map[string]*topic
 // +GetTopicByID(name string): *topic, bool
-// +GetClients(): map[string]*client
-// +GetClientByID(id string): *client, bool
+// +GetInstances(): map[string]*instance
+// +GetInstanceByID(id string): *instance, bool
 // +NewTopic(name string): *topic
 // +RemoveTopic(t *topic)
-// +AddClient(c *client)
-// +RemoveClient(c *client)
+// +AddInstance(c *instance)
+// +RemoveInstance(c *instance)
 
 // TestGroup_NewGroup tests the NewGroup function
 func TestGroup_NewGroup(t *testing.T) {
@@ -71,45 +71,45 @@ func TestGroup_GetTopicByID(t *testing.T) {
 	}
 }
 
-// TestGroup_GetClients tests the GetClients function
-func TestGroup_GetClients(t *testing.T) {
+// TestGroup_GetInstances tests the GetInstances function
+func TestGroup_GetInstances(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	g := ssePubSub.NewGroup()
-	if len(g.GetClients()) > 0 {
-		t.Error("GetClients returned a non-empty map")
+	if len(g.GetInstances()) > 0 {
+		t.Error("GetInstances returned a non-empty map")
 	}
 
-	client1 := ssePubSub.NewClient()
-	client2 := ssePubSub.NewClient()
-	g.AddClient(client1)
-	clients := g.GetClients()
-	if len(clients) != 1 {
-		t.Error("GetClients returned an empty map")
+	instance1 := ssePubSub.NewInstance()
+	instance2 := ssePubSub.NewInstance()
+	g.AddInstance(instance1)
+	instances := g.GetInstances()
+	if len(instances) != 1 {
+		t.Error("GetInstances returned an empty map")
 	}
-	if clients[client1.GetID()] != client1 {
-		t.Error("GetClients returned the wrong client")
+	if instances[instance1.GetID()] != instance1 {
+		t.Error("GetInstances returned the wrong instance")
 	}
-	if clients[client2.GetID()] != nil {
-		t.Error("GetClients returned a non-existent client")
+	if instances[instance2.GetID()] != nil {
+		t.Error("GetInstances returned a non-existent instance")
 	}
 }
 
-// TestGroup_GetClientByID tests the GetClientByID function
-func TestGroup_GetClientByID(t *testing.T) {
+// TestGroup_GetInstanceByID tests the GetInstanceByID function
+func TestGroup_GetInstanceByID(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	g := ssePubSub.NewGroup()
-	if _, ok := g.GetClientByID("test"); ok {
-		t.Error("GetClientByID returned true for a non-existent client")
+	if _, ok := g.GetInstanceByID("test"); ok {
+		t.Error("GetInstanceByID returned true for a non-existent instance")
 	}
 
-	client := ssePubSub.NewClient()
-	g.AddClient(client)
-	clientg, ok := g.GetClientByID(client.GetID())
+	instance := ssePubSub.NewInstance()
+	g.AddInstance(instance)
+	instanceg, ok := g.GetInstanceByID(instance.GetID())
 	if !ok {
-		t.Error("GetClientByID returned false for an existing client")
+		t.Error("GetInstanceByID returned false for an existing instance")
 	}
-	if clientg != client {
-		t.Error("GetClientByID returned the wrong client")
+	if instanceg != instance {
+		t.Error("GetInstanceByID returned the wrong instance")
 	}
 }
 
@@ -141,33 +141,33 @@ func TestGroup_RemoveTopic(t *testing.T) {
 	}
 }
 
-// TestGroup_AddClient tests the AddClient function
-func TestGroup_AddClient(t *testing.T) {
+// TestGroup_AddInstance tests the AddInstance function
+func TestGroup_AddInstance(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	g := ssePubSub.NewGroup()
-	if len(g.GetClients()) > 0 {
-		t.Error("GetClients returned a non-empty map")
+	if len(g.GetInstances()) > 0 {
+		t.Error("GetInstances returned a non-empty map")
 	}
 
-	client := ssePubSub.NewClient()
-	g.AddClient(client)
-	if len(g.GetClients()) != 1 {
-		t.Error("AddClient did not add the client")
+	instance := ssePubSub.NewInstance()
+	g.AddInstance(instance)
+	if len(g.GetInstances()) != 1 {
+		t.Error("AddInstance did not add the instance")
 	}
 }
 
-// TestGroup_RemoveClient tests the RemoveClient function
-func TestGroup_RemoveClient(t *testing.T) {
+// TestGroup_RemoveInstance tests the RemoveInstance function
+func TestGroup_RemoveInstance(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 	g := ssePubSub.NewGroup()
-	client := ssePubSub.NewClient()
-	g.AddClient(client)
-	if len(g.GetClients()) != 1 {
-		t.Error("AddClient did not add the client")
+	instance := ssePubSub.NewInstance()
+	g.AddInstance(instance)
+	if len(g.GetInstances()) != 1 {
+		t.Error("AddInstance did not add the instance")
 	}
 
-	g.RemoveClient(client)
-	if len(g.GetClients()) > 0 {
-		t.Error("RemoveClient did not remove the client")
+	g.RemoveInstance(instance)
+	if len(g.GetInstances()) > 0 {
+		t.Error("RemoveInstance did not remove the instance")
 	}
 }

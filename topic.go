@@ -18,32 +18,32 @@ const (
 
 // Topic represents a messaging Topic in the SSE pub-sub system.
 type Topic struct {
-	id      string
-	ttype   topicType
-	clients map[string]*Instance
-	lock    sync.Mutex
+	id        string
+	ttype     topicType
+	instances map[string]*Instance
+	lock      sync.Mutex
 
 	// Events:
-	OnNewClient      *eventManager[*Instance]
-	OnNewSubOfClient *eventManager[*Instance]
-	OnPub            *eventManager[interface{}]
-	OnRemoveClient   *eventManager[*Instance]
-	OnUnsubOfClient  *eventManager[*Instance]
+	OnNewInstance      *eventManager[*Instance]
+	OnNewSubOfInstance *eventManager[*Instance]
+	OnPub              *eventManager[interface{}]
+	OnRemoveInstance   *eventManager[*Instance]
+	OnUnsubOfInstance  *eventManager[*Instance]
 }
 
 // Create a new topic
 func newTopic(ttype topicType) *Topic {
 	return &Topic{
-		id:      "T-" + uuid.New().String(),
-		ttype:   ttype,
-		clients: make(map[string]*Instance),
+		id:        "T-" + uuid.New().String(),
+		ttype:     ttype,
+		instances: make(map[string]*Instance),
 
 		// Events:
-		OnNewClient:      newEventManager[*Instance](),
-		OnNewSubOfClient: newEventManager[*Instance](),
-		OnPub:            newEventManager[interface{}](),
-		OnRemoveClient:   newEventManager[*Instance](),
-		OnUnsubOfClient:  newEventManager[*Instance](),
+		OnNewInstance:      newEventManager[*Instance](),
+		OnNewSubOfInstance: newEventManager[*Instance](),
+		OnPub:              newEventManager[interface{}](),
+		OnRemoveInstance:   newEventManager[*Instance](),
+		OnUnsubOfInstance:  newEventManager[*Instance](),
 	}
 }
 
@@ -63,47 +63,47 @@ func (t *Topic) GetType() string {
 	return string(t.ttype)
 }
 
-// Add a client to the topic
-func (t *Topic) addClient(c *Instance) {
+// Add a instance to the topic
+func (t *Topic) addInstance(c *Instance) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	t.clients[c.id] = c
+	t.instances[c.id] = c
 
 	// Events
-	t.OnNewSubOfClient.Emit(c)
+	t.OnNewSubOfInstance.Emit(c)
 }
 
-// Remove a client from the topic
-func (t *Topic) removeClient(c *Instance) {
+// Remove a instance from the topic
+func (t *Topic) removeInstance(c *Instance) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	delete(t.clients, c.id)
+	delete(t.instances, c.id)
 
 	// Events
-	t.OnUnsubOfClient.Emit(c)
+	t.OnUnsubOfInstance.Emit(c)
 }
 
-// Get all clients in the topic
-func (t *Topic) GetClients() map[string]*Instance {
+// Get all instances in the topic
+func (t *Topic) GetInstances() map[string]*Instance {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	// Create a copy of the map
 	newmap := make(map[string]*Instance)
-	for k, v := range t.clients {
+	for k, v := range t.instances {
 		newmap[k] = v
 	}
 	return newmap
 }
 
-// Check if a client is subscribed to the topic
+// Check if a instance is subscribed to the topic
 func (t *Topic) IsSubscribed(c *Instance) bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	_, ok := t.clients[c.id]
+	_, ok := t.instances[c.id]
 	return ok
 }
 
@@ -136,7 +136,7 @@ type eventDataUpdates struct {
 	Data  interface{} `json:"data"`
 }
 
-// Publish a message to all clients in the topic
+// Publish a message to all instances in the topic
 func (t *Topic) Pub(msg interface{}) error {
 	// Build the JSON data
 	fulldata := &eventData{
@@ -148,11 +148,11 @@ func (t *Topic) Pub(msg interface{}) error {
 	}
 	fulldata.Updates = append(fulldata.Updates, u)
 
-	// Send the JSON data to all clients
-	for _, c := range t.GetClients() {
+	// Send the JSON data to all instances
+	for _, c := range t.GetInstances() {
 		err := c.send(fulldata) // ignore error. Fire and forget.
 		if err != nil {
-			log.Warnf("[T:%s]: Warning sending data to client: %s", t.GetID(), err.Error())
+			log.Warnf("[T:%s]: Warning sending data to instance: %s", t.GetID(), err.Error())
 		}
 	}
 

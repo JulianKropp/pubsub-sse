@@ -8,11 +8,11 @@ import (
 // +GetID(): string
 // +GetID(): string
 // +GetType(): string
-// +GetClients(): map[string]*client
-// +IsSubscribed(c *client): bool
+// +GetInstances(): map[string]*instance
+// +IsSubscribed(c *instance): bool
 // +Pub(msg interface): error
-// -addClient(c *client)
-// -removeClient(c *client)
+// -addInstance(c *instance)
+// -removeInstance(c *instance)
 
 // TestGetID tests the GetID() method.
 func TestGetID(t *testing.T) {
@@ -40,55 +40,55 @@ func TestGetType(t *testing.T) {
 	}
 }
 
-// TestGetClients tests the GetClients() method.
-func TestGetClients(t *testing.T) {
+// TestGetInstances tests the GetInstances() method.
+func TestGetInstances(t *testing.T) {
 	topic := newTopic("public")
-	if len(topic.GetClients()) != 0 {
-		t.Error("Expected topic to have no clients")
+	if len(topic.GetInstances()) != 0 {
+		t.Error("Expected topic to have no instances")
 	}
 
 	ssePubSub := NewSSEPubSubService()
-	c1 := ssePubSub.NewClient()
-	c2 := ssePubSub.NewClient()
-	topic.addClient(c1)
-	topic.addClient(c2)
+	c1 := ssePubSub.NewInstance()
+	c2 := ssePubSub.NewInstance()
+	topic.addInstance(c1)
+	topic.addInstance(c2)
 
-	if len(topic.GetClients()) != 2 {
-		t.Error("Expected topic to have 2 clients")
+	if len(topic.GetInstances()) != 2 {
+		t.Error("Expected topic to have 2 instances")
 	}
-	if topic.GetClients()[c1.GetID()] != c1 {
-		t.Error("Expected topic to have client c1")
+	if topic.GetInstances()[c1.GetID()] != c1 {
+		t.Error("Expected topic to have instance c1")
 	}
-	if topic.GetClients()[c2.GetID()] != c2 {
-		t.Error("Expected topic to have client c2")
+	if topic.GetInstances()[c2.GetID()] != c2 {
+		t.Error("Expected topic to have instance c2")
 	}
 }
 
 // TestIsSubscribed tests the IsSubscribed() method.
 func TestIsSubscribed(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	c1 := ssePubSub.NewClient()
+	c1 := ssePubSub.NewInstance()
 
 	topic := c1.NewPrivateTopic()
 
 	if topic.IsSubscribed(c1) {
-		t.Error("Expected client to not be subscribed")
+		t.Error("Expected instance to not be subscribed")
 	}
 
 	if err := c1.Sub(topic); err != nil {
-		t.Error("Expected client to subscribe to topic")
+		t.Error("Expected instance to subscribe to topic")
 	}
 
 	if !topic.IsSubscribed(c1) {
-		t.Error("Expected client to be subscribed")
+		t.Error("Expected instance to be subscribed")
 	}
 
 	if err := c1.Unsub(topic); err != nil {
-		t.Error("Expected client to unsubscribe from topic")
+		t.Error("Expected instance to unsubscribe from topic")
 	}
 
 	if topic.IsSubscribed(c1) {
-		t.Error("Expected client to not be subscribed")
+		t.Error("Expected instance to not be subscribed")
 	}
 }
 
@@ -96,35 +96,35 @@ func TestIsSubscribed(t *testing.T) {
 func TestPub(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 
-	c1 := ssePubSub.NewClient()
-	c2 := ssePubSub.NewClient()
+	c1 := ssePubSub.NewInstance()
+	c2 := ssePubSub.NewInstance()
 
 	// Start /event
 	startEventServer(ssePubSub, t, 8082)
 
-	// Start the client 1
+	// Start the instance 1
 	connected1 := make(chan bool)
 	done1 := make(chan bool)
 	data1 := []eventData{}
 	httpToEvent(t, c1, 8082, connected1, done1, &data1)
 
-	// Start the client 1
+	// Start the instance 1
 	connected2 := make(chan bool)
 	done2 := make(chan bool)
 	data2 := []eventData{}
 	httpToEvent(t, c2, 8082, connected2, done2, &data2)
 
-	// Wait for the clients to connect
+	// Wait for the instances to connect
 	<-connected1
 	<-connected2
 
 	topic := c1.NewPrivateTopic()
 
 	if err := c1.Sub(topic); err != nil {
-		t.Error("Expected client to subscribe to topic")
+		t.Error("Expected instance to subscribe to topic")
 	}
 	if err := c2.Sub(topic); err == nil {
-		t.Error("Expected client not to subscribe to topic")
+		t.Error("Expected instance not to subscribe to topic")
 	}
 
 	testData1 := "testdata"
@@ -133,17 +133,17 @@ func TestPub(t *testing.T) {
 	}
 
 	if err := c1.Unsub(topic); err != nil {
-		t.Error("Expected client to unsubscribe from topic")
+		t.Error("Expected instance to unsubscribe from topic")
 	}
 	if err := c2.Unsub(topic); err == nil {
-		t.Error("Expected client to not unsubscribe from topic")
+		t.Error("Expected instance to not unsubscribe from topic")
 	}
 
 	if err := topic.Pub("test"); err != nil {
 		t.Error("Expected topic to publish message")
 	}
 
-	// Wait for the clients to disconnect
+	// Wait for the instances to disconnect
 	<-done1
 	<-done2
 
@@ -164,50 +164,50 @@ func TestPub(t *testing.T) {
 
 }
 
-// TestAddClient tests the addClient() method.
-func TestAddClient(t *testing.T) {
+// TestAddInstance tests the addInstance() method.
+func TestAddInstance(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	c1 := ssePubSub.NewClient()
+	c1 := ssePubSub.NewInstance()
 
 	topic := c1.NewPrivateTopic()
 
-	if len(topic.GetClients()) != 0 {
-		t.Error("Expected topic to have no clients")
+	if len(topic.GetInstances()) != 0 {
+		t.Error("Expected topic to have no instances")
 	}
 
-	topic.addClient(c1)
+	topic.addInstance(c1)
 
-	if len(topic.GetClients()) != 1 {
-		t.Error("Expected topic to have 1 client")
+	if len(topic.GetInstances()) != 1 {
+		t.Error("Expected topic to have 1 instance")
 	}
-	if topic.GetClients()[c1.GetID()] != c1 {
-		t.Error("Expected topic to have client c1")
+	if topic.GetInstances()[c1.GetID()] != c1 {
+		t.Error("Expected topic to have instance c1")
 	}
 }
 
-// TestRemoveClient tests the removeClient() method.
-func TestRemoveClient(t *testing.T) {
+// TestRemoveInstance tests the removeInstance() method.
+func TestRemoveInstance(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	c1 := ssePubSub.NewClient()
+	c1 := ssePubSub.NewInstance()
 
 	topic := c1.NewPrivateTopic()
 
-	if len(topic.GetClients()) != 0 {
-		t.Error("Expected topic to have no clients")
+	if len(topic.GetInstances()) != 0 {
+		t.Error("Expected topic to have no instances")
 	}
 
-	topic.addClient(c1)
+	topic.addInstance(c1)
 
-	if len(topic.GetClients()) != 1 {
-		t.Error("Expected topic to have 1 client")
+	if len(topic.GetInstances()) != 1 {
+		t.Error("Expected topic to have 1 instance")
 	}
-	if topic.GetClients()[c1.GetID()] != c1 {
-		t.Error("Expected topic to have client c1")
+	if topic.GetInstances()[c1.GetID()] != c1 {
+		t.Error("Expected topic to have instance c1")
 	}
 
-	topic.removeClient(c1)
+	topic.removeInstance(c1)
 
-	if len(topic.GetClients()) != 0 {
-		t.Error("Expected topic to have no clients")
+	if len(topic.GetInstances()) != 0 {
+		t.Error("Expected topic to have no instances")
 	}
 }

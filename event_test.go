@@ -9,14 +9,14 @@ import (
 
 // Tests for events:
 // SSEPubSubService.
-//     OnNewClient
+//     OnNewInstance
 //     OnNewPublicTopic
 //     OnNewGroup
-//     OnRemoveClient
+//     OnRemoveInstance
 //     OnRemovePublicTopic
 //     OnRemoveGroup
 
-// client.
+// instance.
 //     OnStatusChange
 //     OnNewTopic
 //     OnNewPublicTopic
@@ -32,17 +32,17 @@ import (
 //     OnUnsubFromTopic
 
 // group.
-//     OnNewClient
+//     OnNewInstance
 //     OnNewGroupTopic
-//     OnRemoveClient
+//     OnRemoveInstance
 //     OnRemoveGroupTopic
 
 // topic.
-//     OnNewClient
-//     OnNewSubOfClient
+//     OnNewInstance
+//     OnNewSubOfInstance
 //     OnPub
-//     OnRemoveClient
-//     OnUnsubOfClient
+//     OnRemoveInstance
+//     OnUnsubOfInstance
 
 // HELPER FUNCTIONS:
 func contains(topics []*Topic, topic *Topic) bool {
@@ -58,29 +58,29 @@ func contains(topics []*Topic, topic *Topic) bool {
 // SSEPubSubService.
 //---------------------------------------------------------------------
 
-// OnNewClient
+// OnNewInstance
 // Can be triggert wirth:
-// - NewClient
-func TestSSEPubSubService_OnNewClient(t *testing.T) {
+// - NewInstance
+func TestSSEPubSubService_OnNewInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
-	// client
-	var client *Instance
+	// instance
+	var instance *Instance
 
 	// Event
-	s.OnNewClient.Listen(func(c *Instance) {
+	s.OnNewInstance.Listen(func(c *Instance) {
 		counter++
-		if client != c {
-			t.Errorf("Expected %v, got %v", client, c)
+		if instance != c {
+			t.Errorf("Expected %v, got %v", instance, c)
 		}
 	})
 
-	// Create a new client.
-	client = s.NewClient()
+	// Create a new instance.
+	instance = s.NewInstance()
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -154,32 +154,32 @@ func TestSSEPubSubService_OnNewGroup(t *testing.T) {
 	}
 }
 
-// OnRemoveClient
+// OnRemoveInstance
 // Can be triggert wirth:
-// - RemoveClient
-func TestSSEPubSubService_OnRemoveClient(t *testing.T) {
+// - RemoveInstance
+func TestSSEPubSubService_OnRemoveInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
-	// client
-	var client *Instance
+	// instance
+	var instance *Instance
 
 	// Event
-	s.OnRemoveClient.Listen(func(c *Instance) {
+	s.OnRemoveInstance.Listen(func(c *Instance) {
 		counter++
-		if client != c {
-			t.Errorf("Expected %v, got %v", client, c)
+		if instance != c {
+			t.Errorf("Expected %v, got %v", instance, c)
 		}
 	})
 
-	// Create a new client.
-	client = s.NewClient()
+	// Create a new instance.
+	instance = s.NewInstance()
 
-	// Remove the client.
-	s.RemoveClient(client)
+	// Remove the instance.
+	s.RemoveInstance(instance)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -260,18 +260,18 @@ func TestSSEPubSubService_OnRemoveGroup(t *testing.T) {
 }
 
 //---------------------------------------------------------------------
-// client.
+// instance.
 //---------------------------------------------------------------------
 
 // OnStatusChange
 // Can be triggert wirth:
 // - SetStatus
 // - Wait for Tiemout
-// - RemoveClient
-func TestClient_OnStatusChange(t *testing.T) {
+// - RemoveInstance
+func TestInstance_OnStatusChange(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
-	ssePubSub.SetClientTimeout(1 * time.Second)
-	client := ssePubSub.NewClient()
+	ssePubSub.SetInstanceTimeout(1 * time.Second)
+	instance := ssePubSub.NewInstance()
 
 	expectedStatuses := make(chan Status, 4) // Channel to synchronize expected statuses
 	expectedStatuses <- Receiving            // Queue the expected statuses in order
@@ -280,7 +280,7 @@ func TestClient_OnStatusChange(t *testing.T) {
 
 	counter := 0
 
-	client.OnStatusChange.Listen(func(status Status) {
+	instance.OnStatusChange.Listen(func(status Status) {
 		counter++
 		expectedStatus := <-expectedStatuses // Receive the next expected status
 		t.Log("Status:", status)
@@ -292,10 +292,10 @@ func TestClient_OnStatusChange(t *testing.T) {
 	// Start /event
 	startEventServer(ssePubSub, t, 8083)
 
-	// Start the client
+	// Start the instance
 	done := make(chan bool)
 	connected := make(chan bool)
-	httpToEvent(t, client, 8083, connected, done, &[]eventData{})
+	httpToEvent(t, instance, 8083, connected, done, &[]eventData{})
 	<-connected
 	<-done
 	time.Sleep(2 * time.Second) // Wait for the timeout to potentially trigger
@@ -305,17 +305,17 @@ func TestClient_OnStatusChange(t *testing.T) {
 		t.Errorf("Expected 3 status changes, got %d", counter)
 	}
 
-	client2 := ssePubSub.NewClient()
+	instance2 := ssePubSub.NewInstance()
 	counter = 0
 
-	client2.OnStatusChange.Listen(func(status Status) {
+	instance2.OnStatusChange.Listen(func(status Status) {
 		counter++
 		if status != Stopped {
 			t.Errorf("Expected %d, got %d", Stopped, status)
 		}
 	})
 
-	ssePubSub.RemoveClient(client2)
+	ssePubSub.RemoveInstance(instance2)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -331,12 +331,12 @@ func TestClient_OnStatusChange(t *testing.T) {
 // - NewPublicTopic
 // - NewPrivateTopic
 // - NewGroupTopic
-func TestClient_OnNewTopic(t *testing.T) {
+func TestInstance_OnNewTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// mutex
 	mutex := make(chan bool, 5)
@@ -383,8 +383,8 @@ func TestClient_OnNewTopic(t *testing.T) {
 	group1 := s.NewGroup()
 	topic = group1.NewTopic()
 
-	// Add the client to the group.
-	group1.AddClient(c)
+	// Add the instance to the group.
+	group1.AddInstance(c)
 
 	<-mutex
 	time.Sleep(100 * time.Millisecond)
@@ -396,7 +396,7 @@ func TestClient_OnNewTopic(t *testing.T) {
 
 	// Create a new group topic.
 	group2 := s.NewGroup()
-	group2.AddClient(c)
+	group2.AddInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -421,12 +421,12 @@ func TestClient_OnNewTopic(t *testing.T) {
 // OnNewPublicTopic
 // Can be triggert wirth:
 // - NewPublicTopic
-func TestClient_OnNewPublicTopic(t *testing.T) {
+func TestInstance_OnNewPublicTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -456,12 +456,12 @@ func TestClient_OnNewPublicTopic(t *testing.T) {
 // OnNewPrivateTopic
 // Can be triggert wirth:
 // - NewPrivateTopic
-func TestClient_OnNewPrivateTopic(t *testing.T) {
+func TestInstance_OnNewPrivateTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -491,19 +491,19 @@ func TestClient_OnNewPrivateTopic(t *testing.T) {
 // OnNewGroupTopic
 // Can be triggert wirth:
 // - NewGroupTopic
-// - group.AddClient
-func TestClient_OnNewGroupTopic(t *testing.T) {
+// - group.AddInstance
+func TestInstance_OnNewGroupTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new group.
 	group := s.NewGroup()
 
-	// Add the client to the group.
-	group.AddClient(c)
+	// Add the instance to the group.
+	group.AddInstance(c)
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -545,12 +545,12 @@ func TestClient_OnNewGroupTopic(t *testing.T) {
 // OnNewGroup
 // Can be triggert wirth:
 // - NewGroup
-func TestClient_OnNewGroup(t *testing.T) {
+func TestInstance_OnNewGroup(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -569,8 +569,8 @@ func TestClient_OnNewGroup(t *testing.T) {
 	// Create a new group.
 	group = s.NewGroup()
 
-	// Add the client to the group.
-	group.AddClient(c)
+	// Add the instance to the group.
+	group.AddInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -583,12 +583,12 @@ func TestClient_OnNewGroup(t *testing.T) {
 // OnSubToTopic
 // Can be triggert wirth:
 // - Sub
-func TestClient_OnSubToTopic(t *testing.T) {
+func TestInstance_OnSubToTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
@@ -626,7 +626,7 @@ func TestClient_OnSubToTopic(t *testing.T) {
 
 	group := s.NewGroup()
 	topic = group.NewTopic()
-	group.AddClient(c)
+	group.AddInstance(c)
 
 	c.Sub(topic)
 
@@ -643,15 +643,15 @@ func TestClient_OnSubToTopic(t *testing.T) {
 // - RemovePublicTopic
 // - RemovePrivateTopic
 // - group.RemoveTopic
-// - group.RemoveClient
-// - sse.RemoveClient
+// - group.RemoveInstance
+// - sse.RemoveInstance
 // - sse.RemoveGroup
-func TestClient_OnRemoveTopic(t *testing.T) {
+func TestInstance_OnRemoveTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
@@ -689,7 +689,7 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 
 	group := s.NewGroup()
 	topic = group.NewTopic()
-	group.AddClient(c)
+	group.AddInstance(c)
 	group.RemoveTopic(topic)
 
 	time.Sleep(100 * time.Millisecond)
@@ -700,7 +700,7 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 	}
 
 	topic = group.NewTopic()
-	group.RemoveClient(c)
+	group.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -716,7 +716,7 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 	topics = append(topics, s.NewPublicTopic())
 	topics = append(topics, c.NewPrivateTopic())
 	group = s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 	topics = append(topics, group.NewTopic())
 
 	// Event
@@ -728,7 +728,7 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 		}
 	})
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -741,13 +741,13 @@ func TestClient_OnRemoveTopic(t *testing.T) {
 // OnRemovePublicTopic
 // Can be triggert wirth:
 // - RemovePublicTopic
-// - sse.RemoveClient
-func TestClient_OnRemovePublicTopic(t *testing.T) {
+// - sse.RemoveInstance
+func TestInstance_OnRemovePublicTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
@@ -776,10 +776,10 @@ func TestClient_OnRemovePublicTopic(t *testing.T) {
 	topic = s.NewPublicTopic()
 	c.NewPrivateTopic()
 	group := s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 	group.NewTopic()
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -793,13 +793,13 @@ func TestClient_OnRemovePublicTopic(t *testing.T) {
 // OnRemovePrivateTopic
 // Can be triggert wirth:
 // - RemovePrivateTopic
-// - sse.RemoveClient
-func TestClient_OnRemovePrivateTopic(t *testing.T) {
+// - sse.RemoveInstance
+func TestInstance_OnRemovePrivateTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new private topic.
 	topic := c.NewPrivateTopic()
@@ -828,10 +828,10 @@ func TestClient_OnRemovePrivateTopic(t *testing.T) {
 	s.NewPublicTopic()
 	topic = c.NewPrivateTopic()
 	group := s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 	group.NewTopic()
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -844,21 +844,21 @@ func TestClient_OnRemovePrivateTopic(t *testing.T) {
 // OnRemoveGroupTopic
 // Can be triggert wirth:
 // - group.RemoveTopic
-// - group.RemoveClient
+// - group.RemoveInstance
 // - sse.RemoveGroup
-// - sse.RemoveClient
-func TestClient_OnRemoveGroupTopic(t *testing.T) {
+// - sse.RemoveInstance
+func TestInstance_OnRemoveGroupTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new group.
 	group := s.NewGroup()
 
-	// Add the client to the group.
-	group.AddClient(c)
+	// Add the instance to the group.
+	group.AddInstance(c)
 
 	// Create a new group topic.
 	topic := group.NewTopic()
@@ -888,7 +888,7 @@ func TestClient_OnRemoveGroupTopic(t *testing.T) {
 	}
 
 	topic = group.NewTopic()
-	group.RemoveClient(c)
+	group.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -898,7 +898,7 @@ func TestClient_OnRemoveGroupTopic(t *testing.T) {
 	}
 
 	group = s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 	topic = group.NewTopic()
 
 	s.RemoveGroup(group)
@@ -913,10 +913,10 @@ func TestClient_OnRemoveGroupTopic(t *testing.T) {
 	s.NewPublicTopic()
 	c.NewPrivateTopic()
 	group = s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 	topic = group.NewTopic()
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -928,21 +928,21 @@ func TestClient_OnRemoveGroupTopic(t *testing.T) {
 
 // OnRemoveGroup
 // Can be triggert wirth:
-// - group.RemoveClient
+// - group.RemoveInstance
 // - sse.RemoveGroup
-// - sse.RemoveClient
-func TestClient_OnRemoveGroup(t *testing.T) {
+// - sse.RemoveInstance
+func TestInstance_OnRemoveGroup(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new group.
 	group := s.NewGroup()
 
-	// Add the client to the group.
-	group.AddClient(c)
+	// Add the instance to the group.
+	group.AddInstance(c)
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -966,9 +966,9 @@ func TestClient_OnRemoveGroup(t *testing.T) {
 	}
 
 	group = s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -978,9 +978,9 @@ func TestClient_OnRemoveGroup(t *testing.T) {
 	}
 
 	group = s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -997,14 +997,14 @@ func TestClient_OnRemoveGroup(t *testing.T) {
 // - RemovePrivateTopic
 // - group.RemoveTopic
 // - sse.RemoveGroup
-// - group.RemoveClient
-// - sse.RemoveClient
-func TestClient_OnUnsubFromTopic(t *testing.T) {
+// - group.RemoveInstance
+// - sse.RemoveInstance
+func TestInstance_OnUnsubFromTopic(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
@@ -1057,7 +1057,7 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 
 	group := s.NewGroup()
 	topic = group.NewTopic()
-	group.AddClient(c)
+	group.AddInstance(c)
 
 	c.Sub(topic)
 	group.RemoveTopic(topic)
@@ -1071,10 +1071,10 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 
 	group = s.NewGroup()
 	topic = group.NewTopic()
-	group.AddClient(c)
+	group.AddInstance(c)
 	c.Sub(topic)
 
-	group.RemoveClient(c)
+	group.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1085,7 +1085,7 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 
 	group = s.NewGroup()
 	topic = group.NewTopic()
-	group.AddClient(c)
+	group.AddInstance(c)
 	c.Sub(topic)
 
 	s.RemoveGroup(group)
@@ -1107,7 +1107,7 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 	topics = append(topics, s.NewPublicTopic())
 	topics = append(topics, c.NewPrivateTopic())
 	group = s.NewGroup()
-	group.AddClient(c)
+	group.AddInstance(c)
 	topics = append(topics, group.NewTopic())
 
 	// Sub to all topics
@@ -1128,7 +1128,7 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 		}
 	})
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1143,32 +1143,32 @@ func TestClient_OnUnsubFromTopic(t *testing.T) {
 // group.
 //---------------------------------------------------------------------
 
-// OnNewClient
+// OnNewInstance
 // Can be triggert wirth:
-// - AddClient
-func TestGroup_OnNewClient(t *testing.T) {
+// - AddInstance
+func TestGroup_OnNewInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
 	// Create a new group.
 	g := s.NewGroup()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
 	// Event
-	g.OnNewClient.Listen(func(cl *Instance) {
+	g.OnNewInstance.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
 		}
 	})
 
-	// Add the client to the group.
-	g.AddClient(c)
+	// Add the instance to the group.
+	g.AddInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1212,37 +1212,37 @@ func TestGroup_OnNewGroupTopic(t *testing.T) {
 	}
 }
 
-// OnRemoveClient
+// OnRemoveInstance
 // Can be triggert wirth:
-// - RemoveClient
-// - sse.RemoveClient
+// - RemoveInstance
+// - sse.RemoveInstance
 // - sse.RemoveGroup
-func TestGroup_OnRemoveClient(t *testing.T) {
+func TestGroup_OnRemoveInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
 	// Create a new group.
 	g := s.NewGroup()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
-	// Add the client to the group.
-	g.AddClient(c)
+	// Add the instance to the group.
+	g.AddInstance(c)
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
 	// Event
-	g.OnRemoveClient.Listen(func(cl *Instance) {
+	g.OnRemoveInstance.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
 		}
 	})
 
-	// Remove the client from the group.
-	g.RemoveClient(c)
+	// Remove the instance from the group.
+	g.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1251,9 +1251,9 @@ func TestGroup_OnRemoveClient(t *testing.T) {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	g.AddClient(c)
+	g.AddInstance(c)
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1262,8 +1262,8 @@ func TestGroup_OnRemoveClient(t *testing.T) {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	c = s.NewClient()
-	g.AddClient(c)
+	c = s.NewInstance()
+	g.AddInstance(c)
 
 	s.RemoveGroup(g)
 
@@ -1326,11 +1326,11 @@ func TestGroup_OnRemoveGroupTopic(t *testing.T) {
 // topic.
 //---------------------------------------------------------------------
 
-// OnNewClient
+// OnNewInstance
 // Can be triggert wirth:
-// - NewClient
+// - NewInstance
 // for public and group topics
-func TestTopic_OnNewClient(t *testing.T) {
+func TestTopic_OnNewInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
@@ -1343,15 +1343,15 @@ func TestTopic_OnNewClient(t *testing.T) {
 	counter := 0
 
 	// Event
-	id := topic.OnNewClient.Listen(func(cl *Instance) {
+	id := topic.OnNewInstance.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
 		}
 	})
 
-	// Create a new client.
-	c = s.NewClient()
+	// Create a new instance.
+	c = s.NewInstance()
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1361,7 +1361,7 @@ func TestTopic_OnNewClient(t *testing.T) {
 	}
 
 	// Clear
-	topic.OnNewClient.Remove(id)
+	topic.OnNewInstance.Remove(id)
 	counter = 0
 
 	// Create a new group.
@@ -1369,16 +1369,16 @@ func TestTopic_OnNewClient(t *testing.T) {
 	topic = group.NewTopic()
 
 	// Event
-	topic.OnNewClient.Listen(func(cl *Instance) {
+	topic.OnNewInstance.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
 		}
 	})
 
-	// Create a new client.
-	c = s.NewClient()
-	group.AddClient(c)
+	// Create a new instance.
+	c = s.NewInstance()
+	group.AddInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1388,25 +1388,25 @@ func TestTopic_OnNewClient(t *testing.T) {
 	}
 }
 
-// OnNewSubOfClient
+// OnNewSubOfInstance
 // Can be triggert wirth:
 // - Sub
 // for public, private and group topics
-func TestTopic_OnNewSubOfClient(t *testing.T) {
+func TestTopic_OnNewSubOfInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
 	// Event
-	id := topic.OnNewSubOfClient.Listen(func(cl *Instance) {
+	id := topic.OnNewSubOfInstance.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1423,16 +1423,16 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	}
 
 	// Clear
-	topic.OnNewSubOfClient.Remove(id)
+	topic.OnNewSubOfInstance.Remove(id)
 	counter = 0
 
-	c = s.NewClient()
+	c = s.NewInstance()
 
 	// Create a new private topic.
 	topic = c.NewPrivateTopic()
 
 	// Event
-	topic.OnNewSubOfClient.Listen(func(cl *Instance) {
+	topic.OnNewSubOfInstance.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1449,18 +1449,18 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	}
 
 	// Clear
-	topic.OnNewSubOfClient.Remove(id)
+	topic.OnNewSubOfInstance.Remove(id)
 	counter = 0
 
 	// Create a new group.
 	group := s.NewGroup()
 	topic = group.NewTopic()
 
-	c = s.NewClient()
-	group.AddClient(c)
+	c = s.NewInstance()
+	group.AddInstance(c)
 
 	// Event
-	topic.OnNewSubOfClient.Listen(func(cl *Instance) {
+	topic.OnNewSubOfInstance.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1487,8 +1487,8 @@ func TestTopic_OnPub(t *testing.T) {
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
 
-	// Create a new client.
-	s.NewClient()
+	// Create a new instance.
+	s.NewInstance()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
@@ -1513,30 +1513,30 @@ func TestTopic_OnPub(t *testing.T) {
 	}
 }
 
-// OnRemoveClient
+// OnRemoveInstance
 // Can be triggert wirth:
 // - sse.RemovePublicTopic
 // - RemovePrivateTopic
 // - group.RemoveTopic
-// - group.RemoveClient
+// - group.RemoveInstance
 // - sse.RemoveGroup
-// - sse.RemoveClient
-func TestTopic_OnRemoveClient(t *testing.T) {
+// - sse.RemoveInstance
+func TestTopic_OnRemoveInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
 	helperfunc := func(top *Topic) string {
 		// Event
-		return top.OnRemoveClient.Listen(func(cl *Instance) {
+		return top.OnRemoveInstance.Listen(func(cl *Instance) {
 			counter++
 			if c != cl {
 				t.Errorf("Expected %v, got %v", c, cl)
@@ -1556,7 +1556,7 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	topic.OnRemoveClient.Remove(id)
+	topic.OnRemoveInstance.Remove(id)
 
 	topic = c.NewPrivateTopic()
 	id = helperfunc(topic)
@@ -1569,12 +1569,12 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	topic.OnRemoveClient.Remove(id)
+	topic.OnRemoveInstance.Remove(id)
 
 	group := s.NewGroup()
 	topic = group.NewTopic()
 	id = helperfunc(topic)
-	group.AddClient(c)
+	group.AddInstance(c)
 
 	group.RemoveTopic(topic)
 
@@ -1585,11 +1585,11 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 		t.Errorf("Expected 3, got %d", counter)
 	}
 
-	topic.OnRemoveClient.Remove(id)
+	topic.OnRemoveInstance.Remove(id)
 
 	topic = group.NewTopic()
 	id = helperfunc(topic)
-	group.RemoveClient(c)
+	group.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1598,7 +1598,7 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 		t.Errorf("Expected 4, got %d", counter)
 	}
 
-	group.AddClient(c)
+	group.AddInstance(c)
 	s.RemoveGroup(group)
 
 	time.Sleep(100 * time.Millisecond)
@@ -1608,12 +1608,12 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 		t.Errorf("Expected 5, got %d", counter)
 	}
 
-	topic.OnRemoveClient.Remove(id)
+	topic.OnRemoveInstance.Remove(id)
 
 	topic = s.NewPublicTopic()
 	helperfunc(topic)
 
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1623,24 +1623,24 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 	}
 }
 
-// OnUnsubOfClient
+// OnUnsubOfInstance
 // Can be triggert wirth:
 // - Unsub
 // - sse.RemovePublicTopic
 // - RemovePrivateTopic
 // - group.RemoveTopic
-// - group.RemoveClient
+// - group.RemoveInstance
 // - sse.RemoveGroup
-// - sse.RemoveClient
-func TestTopic_OnUnsubOfClient(t *testing.T) {
+// - sse.RemoveInstance
+func TestTopic_OnUnsubOfInstance(t *testing.T) {
 	// Create a new SSEPubSubService.
 	s := NewSSEPubSubService()
 
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
 
-	// Create a new client.
-	c := s.NewClient()
+	// Create a new instance.
+	c := s.NewInstance()
 
 	// Subscribe to the topic.
 	c.Sub(topic)
@@ -1650,7 +1650,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 
 	helperfunc := func(top *Topic) string {
 		// Event
-		return top.OnUnsubOfClient.Listen(func(cl *Instance) {
+		return top.OnUnsubOfInstance.Listen(func(cl *Instance) {
 			counter++
 			if c != cl {
 				t.Errorf("Expected %v, got %v", c, cl)
@@ -1670,7 +1670,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 		t.Errorf("Expected 1, got %d", counter)
 	}
 
-	topic.OnUnsubOfClient.Remove(id)
+	topic.OnUnsubOfInstance.Remove(id)
 
 	topic = s.NewPublicTopic()
 	id = helperfunc(topic)
@@ -1684,7 +1684,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 		t.Errorf("Expected 2, got %d", counter)
 	}
 
-	topic.OnUnsubOfClient.Remove(id)
+	topic.OnUnsubOfInstance.Remove(id)
 
 	topic = c.NewPrivateTopic()
 	id = helperfunc(topic)
@@ -1698,12 +1698,12 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 		t.Errorf("Expected 3, got %d", counter)
 	}
 
-	topic.OnUnsubOfClient.Remove(id)
+	topic.OnUnsubOfInstance.Remove(id)
 
 	group := s.NewGroup()
 	topic = group.NewTopic()
 	id = helperfunc(topic)
-	group.AddClient(c)
+	group.AddInstance(c)
 
 	c.Sub(topic)
 	group.RemoveTopic(topic)
@@ -1715,12 +1715,12 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 		t.Errorf("Expected 4, got %d", counter)
 	}
 
-	topic.OnUnsubOfClient.Remove(id)
+	topic.OnUnsubOfInstance.Remove(id)
 
 	topic = group.NewTopic()
 	c.Sub(topic)
 	id = helperfunc(topic)
-	group.RemoveClient(c)
+	group.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1729,7 +1729,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 		t.Errorf("Expected 5, got %d", counter)
 	}
 
-	group.AddClient(c)
+	group.AddInstance(c)
 	c.Sub(topic)
 	s.RemoveGroup(group)
 
@@ -1740,13 +1740,13 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 		t.Errorf("Expected 6, got %d", counter)
 	}
 
-	topic.OnUnsubOfClient.Remove(id)
+	topic.OnUnsubOfInstance.Remove(id)
 
 	topic = s.NewPublicTopic()
 	helperfunc(topic)
 
 	c.Sub(topic)
-	s.RemoveClient(c)
+	s.RemoveInstance(c)
 
 	time.Sleep(100 * time.Millisecond)
 
