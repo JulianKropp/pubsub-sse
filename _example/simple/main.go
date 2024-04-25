@@ -16,7 +16,7 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir("./web"))) // Serve static files
 
 	// You can write your own endpoints if you want. Just have a look at the examples and modify them to your needs.
-	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddClient(ssePubSub, w, r) })                 // Add client endpoint
+	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddInstance(ssePubSub, w, r) })                 // Add instance endpoint
 	http.HandleFunc("/add/topic/public/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPublicTopic(ssePubSub, w, r) })   // Add topic endpoint
 	http.HandleFunc("/add/topic/private/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPrivateTopic(ssePubSub, w, r) }) // Add topic endpoint
 	http.HandleFunc("/sub", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Subscribe(ssePubSub, w, r) })                      // Subscribe endpoint
@@ -27,10 +27,10 @@ func main() {
 		log.Fatalf("[sys]: %s", err.Error()) // Start http server
 	}()
 
-	// Create a new client and get it by id
-	client := ssePubSub.NewClient()
-	client, _ = ssePubSub.GetClientByID(client.GetID())
-	log.Infof("[sys]: Client ID: %s", client.GetID())
+	// Create a new instance and get it by id
+	instance := ssePubSub.NewInstance()
+	instance, _ = ssePubSub.GetInstanceByID(instance.GetID())
+	log.Infof("[sys]: Instance ID: %s", instance.GetID())
 
 	// Create a public topic
 	pubTopic := ssePubSub.NewPublicTopic()
@@ -38,40 +38,40 @@ func main() {
 
 	// Get topic by ID. 3 ways to get a public topic:
 	pubTopic, _ = ssePubSub.GetPublicTopicByID(pubTopicID)
-	pubTopic, _ = client.GetTopicByID(pubTopicID)
-	pubTopic, _ = client.GetPublicTopicByID(pubTopicID)
+	pubTopic, _ = instance.GetTopicByID(pubTopicID)
+	pubTopic, _ = instance.GetPublicTopicByID(pubTopicID)
 
 	// Subscribe to the topic
-	client.Sub(pubTopic)
+	instance.Sub(pubTopic)
 
 	// Send data to the topic
 	pubTopic.Pub(TestData{Testdata: "testdata"})
 
 	// Unsubscribe from topic
-	client.Unsub(pubTopic)
+	instance.Unsub(pubTopic)
 
 	// Remove public topic
 	ssePubSub.RemovePublicTopic(pubTopic)
 
 	// Create a private topic
-	privTopic := client.NewPrivateTopic()
+	privTopic := instance.NewPrivateTopic()
 	privTopicID := privTopic.GetID()
 
 	// Get topic by ID. 2 ways to get a private topic:
-	privTopic, _ = client.GetTopicByID(privTopicID)
-	privTopic, _ = client.GetPrivateTopicByID(privTopicID)
+	privTopic, _ = instance.GetTopicByID(privTopicID)
+	privTopic, _ = instance.GetPrivateTopicByID(privTopicID)
 
 	// Subscribe to the topic
-	client.Sub(privTopic)
+	instance.Sub(privTopic)
 
 	// Send data to the topic
 	privTopic.Pub(TestData{Testdata: "testdata"})
 
 	// Unsubscribe from topic
-	client.Unsub(privTopic)
+	instance.Unsub(privTopic)
 
 	// Remove private topic
-	client.RemovePrivateTopic(privTopic)
+	instance.RemovePrivateTopic(privTopic)
 
 	// Create a group
 	group := ssePubSub.NewGroup()
@@ -80,11 +80,11 @@ func main() {
 	// Get group by ID
 	group, _ = ssePubSub.GetGroupByID(groupID)
 
-	// Add client to group
-	group.AddClient(client)
+	// Add instance to group
+	group.AddInstance(instance)
 
-	// Get group from client
-	group, _ = client.GetGroupByID(groupID)
+	// Get group from instance
+	group, _ = instance.GetGroupByID(groupID)
 
 	// Create a group topic
 	groupTopic := group.NewTopic()
@@ -92,35 +92,35 @@ func main() {
 
 	// Get topic by ID. 2 ways to get a group topic:
 	groupTopic, _ = group.GetTopicByID(groupTopicID)
-	groupTopic, _ = client.GetTopicByID(groupTopicID)
+	groupTopic, _ = instance.GetTopicByID(groupTopicID)
 
 	// Subscribe to the topic
-	client.Sub(groupTopic)
+	instance.Sub(groupTopic)
 
 	// Send data to the topic
 	groupTopic.Pub(TestData{Testdata: "testdata"})
 
 	// Unsubscribe from topic
-	client.Unsub(groupTopic)
+	instance.Unsub(groupTopic)
 
 	// Remove group topic
 	group.RemoveTopic(groupTopic)
 
-	// Remove client from group
-	group.RemoveClient(client)
+	// Remove instance from group
+	group.RemoveInstance(instance)
 
 	// Remove group
 	ssePubSub.RemoveGroup(group)
 
-	// Remove client
-	ssePubSub.RemoveClient(client)
+	// Remove instance
+	ssePubSub.RemoveInstance(instance)
 
 	// Create Public topic PUBLIC
 	pubTopic = ssePubSub.NewPublicTopic()
 
-	// If client is created
-	ssePubSub.OnNewClient.Listen(func(c *pubsubsse.Client) {
-		log.Infof("[sys]: New client: %s", c.GetID())
+	// If instance is created
+	ssePubSub.OnNewInstance.Listen(func(c *pubsubsse.Instance) {
+		log.Infof("[sys]: New instance: %s", c.GetID())
 
 		// Subscribe to public topic
 		c.Sub(pubTopic)
