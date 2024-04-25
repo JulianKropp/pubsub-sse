@@ -2,35 +2,33 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strconv"
-	"sync"
 	"time"
 
 	"github.com/apex/log"
-	"github.com/google/uuid"
-
 	pubsubsse "github.com/bigbluebutton-bot/pubsub-sse"
 )
 
 func main() {
 	// Create a new Server and a new ChatRoom
 	Server := NewServer(8080)
-	PublicChatRoom := Server.NewChatRoom()
+	chatroom := Server.NewChatRoom()
+	log.Infof("Chatroom ID: %s", chatroom.GetID())
 
 	// Handle endpoint
 	// handle favorite icon for all paths
-	Server.http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "./web/favicon.ico") }) // Serve favicon.ico
-	Server.http.Handle("/", http.FileServer(http.Dir("./web")))                                                           // Serve static files
-	Server.http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "chat.html") }) // Serve chat.html
-	Server.http.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Event(Server.ssePubSub, w, r) }) // Event SSE endpoint
-	Server.http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) { Join(Server, w, r) }) // Add client endpoint
+	Server.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "./web/favicon.ico") }) // Serve favicon.ico
+	Server.Handle("/", http.FileServer(http.Dir("./web/root")))                                                                   // Serve static files
+	Server.Handle("/chat", http.FileServer(http.Dir("./web/chat")))                                                               // Serve chat.html
+	Server.HandleFunc("/event", func(w http.ResponseWriter, r *http.Request) { Event(Server, w, r) })                             // Event SSE endpoint
+	Server.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) { Join(Server, w, r) })                               // Add client endpoint
 	Server.Start()
 
 	time.Sleep(500 * time.Second)
 }
 
-func Join(w http.ResponseWriter, r *http.Request) {
+func Join(s *Server, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Get username and chatroom_id from request
@@ -41,157 +39,57 @@ func Join(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "Invalid username"})
 		return
 	}
-	if Server.chatRooms[chatroom_id] == nil {
+	chatroom, ok := s.GetChatRoomByID(chatroom_id)
+	if ok == false {
 		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "Invalid chatroom_id"})
 		return
 	}
 
 	// Create a new user
-	user := c.NewUser("User")
-
-
+	user := chatroom.NewUser(username)
 
 	// Send the client ID
-	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "client_id": user.client.GetID(), "user_id": user.Id})
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "connection_id": user.client.GetID(), "user_id": user.GetID(), "chatroom_id": chatroom.GetID()})
 }
 
-type Server struct {
-	lock sync.Mutex
+// Event
+func Event(s *Server, w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
-	id        string
-	http      *http.ServeMux
-	httpport  int
-	ssePubSub *pubsubsse.SSEPubSubService
-	chatRooms map[string]*ChatRoom
-}
+	// GET connectionID and topic from request body
+	connectionID := r.URL.Query().Get("connection_id")
 
-type ChatRoom struct {
-	lock sync.Mutex `json:"-"`
-
-	Id        string           `json:"id"`
-	server    *Server          `json:"-"`
-	Users     map[string]*User `json:"users"`
-	Messages  []*ChatMessage   `json:"messages"`
-	userTopic *pubsubsse.Topic `json:"-"`
-	chatTopic *pubsubsse.Topic `json:"-"`
-}
-
-type User struct {
-	lock sync.Mutex `json:"-"`
-
-	Id     string            `json:"id"`
-	Client_id string         `json:"-"`
-	Name   string            `json:"name"`
-	client *pubsubsse.Client `json:"-"`
-}
-
-type ChatMessage struct {
-	lock sync.Mutex `json:"-"`
-
-	User    User      `json:"user"`
-	Message string    `json:"message"`
-	Time    time.Time `json:"time"`
-}
-
-func NewServer(port int) *Server {
-	// Create a new SSEPubSubService
-	ssePubSub := pubsubsse.NewSSEPubSubService()
-
-	s := &Server{
-		lock:      sync.Mutex{},
-		id:        "S-" + uuid.New().String(),
-		http:      http.NewServeMux(),
-		httpport:  port,
-		ssePubSub: ssePubSub,
-		chatRooms: make(map[string]*ChatRoom),
+	// Get the client
+	client, ok := s.GetClientByID(connectionID)
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "connection not found"})
+		return
 	}
 
-	return s
-}
+	// Test if client is already receiving
+	if client.GetStatus() == pubsubsse.Receiving {
+		w.WriteHeader(http.StatusBadRequest)
 
-func (s *Server) Start() {
-	go func() {
-		err := http.ListenAndServe(":"+strconv.Itoa(s.httpport), s.http)
-		log.Fatalf("[sys]: %s", err.Error()) // Start http server
-	}()
-}
-
-func (s *Server) NewChatRoom() *ChatRoom {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	chatRoom := &ChatRoom{
-		lock:      sync.Mutex{},
-		Id:        "CR-" + uuid.New().String(),
-		server:    s,
-		Users:     make(map[string]*User),
-		Messages:  make([]*ChatMessage, 0),
-		userTopic: s.ssePubSub.NewPublicTopic(),
-		chatTopic: s.ssePubSub.NewPublicTopic(),
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "connection is already receiving"})
+		return
 	}
 
-	// Add chatRoom to ChatRooms
-	s.chatRooms[chatRoom.Id] = chatRoom
+	// SSE-specific headers
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
 
-	return chatRoom
-}
+	// Get the request's context. If the connection closes, the context will be canceled.
+	ctx := r.Context()
 
-func (c *ChatRoom) NewUser(name string) *User {
-	// Create a new client
-	ssePubSub := c.server.ssePubSub
-	client := ssePubSub.NewClient()
-
-	user := &User{
-		lock:   sync.Mutex{},
-		Id:     "U-" + uuid.New().String(),
-		Client_id: client.GetID(),
-		Name:   name,
-		client: client,
-	}
-
-	c.lock.Lock()
-	c.Users[user.Id] = user
-	c.lock.Unlock()
-
-	// Send user to userTopic
-	c.sendUserList()
-
-	// Subscribe user to chatTopic and userTopic
-	user.client.Sub(c.chatTopic)
-	user.client.Sub(c.userTopic)
-
-	// If client disconnects remove client after 10s and delete the listener
-	var onStatusChangeID string
-	onStatusChangeID = client.OnStatusChange.Listen(func(status pubsubsse.Status) {
-		log.Infof("[sys]: Client status change: %s", pubsubsse.StatusToString(status))
-
-		if client.GetStatus() == pubsubsse.Timeout || client.GetStatus() == pubsubsse.Stopped {
-			log.Infof("[sys]: Client Timed out: %s", client.GetID())
-			client.OnStatusChange.Remove(onStatusChangeID)
-			ssePubSub.RemoveClient(client)
-
-			// Remove user
-			c.RemoveUser(user)
+	// Keep the connection open until it's closed by the client or client is removed
+	// OnEvent: Send message to client if new data is published
+	client.Start(ctx, func(msg string) {
+		fmt.Fprintf(w, "%s", msg)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
 		}
 	})
-
-	return user
-}
-
-func (c *ChatRoom) sendUserList() {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	// Send all users to userTopic
-	c.userTopic.Pub(c.Users)
-}
-
-func (c *ChatRoom) RemoveUser(user *User) {
-	// Remove user from users
-	c.lock.Lock()
-	delete(c.Users, user.Id)
-	c.lock.Unlock()
-
-	// Send user to userTopic
-	c.sendUserList()
 }
