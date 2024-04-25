@@ -295,7 +295,7 @@ func TestInstance_OnStatusChange(t *testing.T) {
 	// Start the instance
 	done := make(chan bool)
 	connected := make(chan bool)
-	httpToEvent(t, instance, 8083, connected, done, &[]eventData{})
+	httpToEvent(t, instance, 8083, connected, done, &[]connectionData{})
 	<-connected
 	<-done
 	time.Sleep(2 * time.Second) // Wait for the timeout to potentially trigger

@@ -139,14 +139,21 @@ type eventDataUpdates struct {
 // Publish a message to all instances in the topic
 func (t *Topic) Pub(msg interface{}) error {
 	// Build the JSON data
-	fulldata := &eventData{
-		Updates: []eventDataUpdates{},
+	fulldata := &connectionData{
+		InstanceData: []instanceData{
+			{
+				ID: t.GetID(),
+				Data: eventData{
+					Updates: []eventDataUpdates{
+						{
+							Topic: t.GetID(),
+							Data:  msg,
+						},
+					},
+				},
+			},
+		},
 	}
-	u := eventDataUpdates{
-		Topic: t.GetID(),
-		Data:  msg,
-	}
-	fulldata.Updates = append(fulldata.Updates, u)
 
 	// Send the JSON data to all instances
 	for _, c := range t.GetInstances() {

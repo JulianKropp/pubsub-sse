@@ -33,7 +33,7 @@ func TestInstance_GetStatus(t *testing.T) {
 	// Start the instance
 	done := make(chan bool)
 	connected := make(chan bool)
-	httpToEvent(t, instance, 8080, connected, done, &[]eventData{})
+	httpToEvent(t, instance, 8080, connected, done, &[]connectionData{})
 	<-connected
 
 	if instance.GetStatus() != Receiving {
@@ -428,7 +428,7 @@ func TestInstance_send(t *testing.T) {
 	// Start the instance
 	connected := make(chan bool)
 	done := make(chan bool)
-	data := []eventData{}
+	data := []connectionData{}
 	httpToEvent(t, instance, 8081, connected, done, &data)
 	<-connected
 
@@ -453,12 +453,14 @@ func TestInstance_send(t *testing.T) {
 		return
 	}
 	for _, d := range data {
-		if len(d.Updates) > 0 {
-			if d.Updates[0].Data != testData {
-				t.Errorf("data[].Updates[0].Data != testData")
+		if len(d.InstanceData) > 0 {
+			if len(d.InstanceData[0].Data.Updates) > 0 {
+				if d.InstanceData[0].Data.Updates[0].Data != testData {
+					t.Errorf("data[].Updates[0].Data != testData")
+					return
+				}
 				return
 			}
-			return
 		}
 	}
 	t.Errorf("No Updates received")

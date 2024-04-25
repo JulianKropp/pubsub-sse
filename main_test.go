@@ -31,7 +31,7 @@ func startEventServer(ssePubSub *SSEPubSubService, t *testing.T, port int) {
 
 // Makes an http request to localhost:8080/event
 // This will be an SSE connection and will be open for 10s
-func httpToEvent(t *testing.T, instance *Instance, port int, connected, done chan bool, returnValue *[]eventData) {
+func httpToEvent(t *testing.T, instance *Instance, port int, connected, done chan bool, returnValue *[]connectionData) {
 	hinstance := http.Client{}
 	req, err := http.NewRequest("GET", "http://localhost:"+strconv.Itoa(port)+"/event?instance_id="+instance.GetID(), nil)
 	if err != nil {
@@ -100,7 +100,7 @@ func httpToEvent(t *testing.T, instance *Instance, port int, connected, done cha
 					continue
 				}
 
-				var rvalue eventData
+				var rvalue connectionData
 				// Unmarshal the JSON data
 				err = json.Unmarshal([]byte(message), &rvalue)
 				if err != nil {

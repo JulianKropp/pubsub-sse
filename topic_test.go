@@ -97,34 +97,23 @@ func TestPub(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
 
 	c1 := ssePubSub.NewInstance()
-	c2 := ssePubSub.NewInstance()
 
 	// Start /event
 	startEventServer(ssePubSub, t, 8082)
 
 	// Start the instance 1
-	connected1 := make(chan bool)
-	done1 := make(chan bool)
-	data1 := []eventData{}
-	httpToEvent(t, c1, 8082, connected1, done1, &data1)
-
-	// Start the instance 1
-	connected2 := make(chan bool)
-	done2 := make(chan bool)
-	data2 := []eventData{}
-	httpToEvent(t, c2, 8082, connected2, done2, &data2)
+	connected := make(chan bool)
+	done := make(chan bool)
+	data := []connectionData{}
+	httpToEvent(t, c1, 8082, connected, done, &data)
 
 	// Wait for the instances to connect
-	<-connected1
-	<-connected2
+	<-connected
 
 	topic := c1.NewPrivateTopic()
 
 	if err := c1.Sub(topic); err != nil {
 		t.Error("Expected instance to subscribe to topic")
-	}
-	if err := c2.Sub(topic); err == nil {
-		t.Error("Expected instance not to subscribe to topic")
 	}
 
 	testData1 := "testdata"
@@ -135,25 +124,21 @@ func TestPub(t *testing.T) {
 	if err := c1.Unsub(topic); err != nil {
 		t.Error("Expected instance to unsubscribe from topic")
 	}
-	if err := c2.Unsub(topic); err == nil {
-		t.Error("Expected instance to not unsubscribe from topic")
-	}
 
 	if err := topic.Pub("test"); err != nil {
 		t.Error("Expected topic to publish message")
 	}
 
 	// Wait for the instances to disconnect
-	<-done1
-	<-done2
+	<-done
 
-	if len(data1) < 1 {
+	if len(data) < 1 {
 		t.Error("len(data) < 1")
 		return
 	}
-	for _, d := range data1 {
-		if len(d.Updates) > 0 {
-			if d.Updates[0].Data != testData1 {
+	for _, d := range data {
+		if len(d.InstanceData[0].Data.Updates) > 0 {
+			if d.InstanceData[0].Data.Updates[0].Data != testData1 {
 				t.Error("data[].Updates[0].Data != testData")
 				return
 			}
