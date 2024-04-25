@@ -1498,7 +1498,7 @@ func TestTopic_OnPub(t *testing.T) {
 	// Event
 	topic.OnPub.Listen(func(data interface{}) {
 		// interface to eventData
-		if data.(*eventData).Updates[0].Data != "test" {
+		if data.(*connectionData).InstanceData[0].Data.Updates[0].Data != "test" {
 			t.Errorf("Expected test, got %s", data.(*eventData).Updates[0].Data)
 		}
 		counter++
