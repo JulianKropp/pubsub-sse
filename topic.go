@@ -142,7 +142,7 @@ func (t *Topic) Pub(msg interface{}) error {
 	fulldata := &connectionData{
 		InstanceData: []instanceData{
 			{
-				ID: t.GetID(),
+				ID: "",
 				Data: eventData{
 					Updates: []eventDataUpdates{
 						{
@@ -157,6 +157,7 @@ func (t *Topic) Pub(msg interface{}) error {
 
 	// Send the JSON data to all instances
 	for _, c := range t.GetInstances() {
+		fulldata.InstanceData[0].ID = c.GetID()
 		err := c.send(fulldata) // ignore error. Fire and forget.
 		if err != nil {
 			log.Warnf("[T:%s]: Warning sending data to instance: %s", t.GetID(), err.Error())
