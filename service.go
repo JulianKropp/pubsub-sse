@@ -10,19 +10,19 @@ import (
 
 // SSEPubSubService represents the SSE publisher and subscriber system.
 type SSEPubSubService struct {
-	id           string
-	clients      map[string]*Client
-	clientTimout time.Duration
-	publicTopics map[string]*Topic
-	groups       map[string]*Group
+	id                    string
+	connections           map[string]*Connection
+	clientTimout          time.Duration
+	publicTopics          map[string]*Topic
+	groups                map[string]*Group
 
 	lock sync.Mutex
 
 	// Events:
-	OnNewClient         *eventManager[*Client]
+	OnNewClient         *eventManager[*Instance]
 	OnNewPublicTopic    *eventManager[*Topic]
 	OnNewGroup          *eventManager[*Group]
-	OnRemoveClient      *eventManager[*Client]
+	OnRemoveClient      *eventManager[*Instance]
 	OnRemovePublicTopic *eventManager[*Topic]
 	OnRemoveGroup       *eventManager[*Group]
 }
@@ -30,18 +30,18 @@ type SSEPubSubService struct {
 // NewSSEPubSub creates a new sSEPubSubService instance.
 func NewSSEPubSubService() *SSEPubSubService {
 	return &SSEPubSubService{
-		id:           "S-" + uuid.New().String(),
-		clients:      make(map[string]*Client),
-		clientTimout: 10 * time.Second,
-		publicTopics: make(map[string]*Topic),
-		groups:       make(map[string]*Group),
+		id:                    "S-" + uuid.New().String(),
+		connections:           make(map[string]*Connection),
+		clientTimout:          10 * time.Second,
+		publicTopics:          make(map[string]*Topic),
+		groups:                make(map[string]*Group),
 
 		lock: sync.Mutex{},
 
-		OnNewClient:         newEventManager[*Client](),
+		OnNewClient:         newEventManager[*Instance](),
 		OnNewPublicTopic:    newEventManager[*Topic](),
 		OnNewGroup:          newEventManager[*Group](),
-		OnRemoveClient:      newEventManager[*Client](),
+		OnRemoveClient:      newEventManager[*Instance](),
 		OnRemovePublicTopic: newEventManager[*Topic](),
 		OnRemoveGroup:       newEventManager[*Group](),
 	}
@@ -56,67 +56,46 @@ func (s *SSEPubSubService) GetID() string {
 }
 
 // Create new client
-func (s *SSEPubSubService) NewClient() *Client {
-	c := newClient(s)
+func (s *SSEPubSubService) NewClient(c ...*Connection) *Instance {
+	var con *Connection
 
-	// Lock the sSEPubSubService
+	if len(c) == 0 {
+		con = s.newConnection()
+	} else {
+		con = c[0]
+	}
+
+	// Create a new instance
+	i := con.newInstance()
+
+	// if the connection is not already in the sSEPubSubService, add it
 	s.lock.Lock()
-	s.clients[c.GetID()] = c
+	if _, ok := s.connections[con.GetID()]; !ok {
+		s.connections[con.GetID()] = con
+	}
 	s.lock.Unlock()
 
 	// Emit event
-	s.OnNewClient.Emit(c)
+	s.OnNewClient.Emit(i)
 	for _, t := range s.GetPublicTopics() {
-		t.OnNewClient.Emit(c)
+		t.OnNewClient.Emit(i)
 	}
 
-	return c
+	return i
 }
 
 // Remove client
-// 1. Unsubscribe from all topics
-// 2. Remove all private topics
-// 3. Stop the client
-// 4. Remove client from sSEPubSubService
-func (s *SSEPubSubService) RemoveClient(c *Client) {
-	// Unsubscribe from all topics
-	alltopics := c.GetAllTopics()
-	for _, t := range alltopics {
-		if err := c.Unsub(t); err != nil {
-			log.Warnf("[C:%s]: Warning unsubscribing from topic %s: %s", c.GetID(), t.GetID(), err)
-		}
+func (s *SSEPubSubService) RemoveClient(i *Instance) {
+	i.connection.removeInstance(i)
+
+	if len(i.connection.GetInstances()) == 0 {
+		s.lock.Lock()
+		delete(s.connections, i.connection.GetID())
+		s.lock.Unlock()
+
+		// stop the client
+		i.connection.stop(Stopped)
 	}
-
-	// Remove public topics
-	for _, t := range c.GetPublicTopics() {
-		c.OnRemoveTopic.Emit(t)
-		c.OnRemovePublicTopic.Emit(t)
-		t.OnRemoveClient.Emit(c)
-	}
-
-	// Remove all private topics
-	for _, t := range c.GetPrivateTopics() {
-		c.RemovePrivateTopic(t)
-	}
-
-	// Remove all groups
-	groups := c.GetGroups()
-	for _, g := range groups {
-		g.RemoveClient(c)
-	}
-
-	// stop the client
-	c.stop(Stopped)
-
-	// Lock the sSEPubSubService
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// Remove client from sSEPubSubService
-	delete(s.clients, c.GetID())
-
-	// Emit event
-	s.OnRemoveClient.Emit(c)
 }
 
 // Get client timeout
@@ -217,26 +196,28 @@ func (s *SSEPubSubService) GetGroupByID(id string) (*Group, bool) {
 }
 
 // Get clients
-func (s *SSEPubSubService) GetClients() map[string]*Client {
+func (s *SSEPubSubService) GetClients() map[string]*Instance {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	// Create a copy of the map
-	newmap := make(map[string]*Client)
-	for k, v := range s.clients {
-		newmap[k] = v
+	newmap := make(map[string]*Instance)
+	for _, v := range s.connections {
+		for _, i := range v.GetInstances() {
+			newmap[i.GetID()] = i
+		}
 	}
 
 	return newmap
 }
 
 // Get client by ID
-func (s *SSEPubSubService) GetClientByID(id string) (*Client, bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *SSEPubSubService) GetClientByID(id string) (*Instance, bool) {
+	clients := s.GetClients()
 
-	c, ok := s.clients[id]
+	c, ok := clients[id]
 	return c, ok
+
 }
 
 // Create new public topic

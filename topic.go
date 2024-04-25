@@ -20,15 +20,15 @@ const (
 type Topic struct {
 	id      string
 	ttype   topicType
-	clients map[string]*Client
+	clients map[string]*Instance
 	lock    sync.Mutex
 
 	// Events:
-	OnNewClient      *eventManager[*Client]
-	OnNewSubOfClient *eventManager[*Client]
+	OnNewClient      *eventManager[*Instance]
+	OnNewSubOfClient *eventManager[*Instance]
 	OnPub            *eventManager[interface{}]
-	OnRemoveClient   *eventManager[*Client]
-	OnUnsubOfClient  *eventManager[*Client]
+	OnRemoveClient   *eventManager[*Instance]
+	OnUnsubOfClient  *eventManager[*Instance]
 }
 
 // Create a new topic
@@ -36,14 +36,14 @@ func newTopic(ttype topicType) *Topic {
 	return &Topic{
 		id:      "T-" + uuid.New().String(),
 		ttype:   ttype,
-		clients: make(map[string]*Client),
+		clients: make(map[string]*Instance),
 
 		// Events:
-		OnNewClient:      newEventManager[*Client](),
-		OnNewSubOfClient: newEventManager[*Client](),
+		OnNewClient:      newEventManager[*Instance](),
+		OnNewSubOfClient: newEventManager[*Instance](),
 		OnPub:            newEventManager[interface{}](),
-		OnRemoveClient:   newEventManager[*Client](),
-		OnUnsubOfClient:  newEventManager[*Client](),
+		OnRemoveClient:   newEventManager[*Instance](),
+		OnUnsubOfClient:  newEventManager[*Instance](),
 	}
 }
 
@@ -64,7 +64,7 @@ func (t *Topic) GetType() string {
 }
 
 // Add a client to the topic
-func (t *Topic) addClient(c *Client) {
+func (t *Topic) addClient(c *Instance) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -75,7 +75,7 @@ func (t *Topic) addClient(c *Client) {
 }
 
 // Remove a client from the topic
-func (t *Topic) removeClient(c *Client) {
+func (t *Topic) removeClient(c *Instance) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -86,12 +86,12 @@ func (t *Topic) removeClient(c *Client) {
 }
 
 // Get all clients in the topic
-func (t *Topic) GetClients() map[string]*Client {
+func (t *Topic) GetClients() map[string]*Instance {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	// Create a copy of the map
-	newmap := make(map[string]*Client)
+	newmap := make(map[string]*Instance)
 	for k, v := range t.clients {
 		newmap[k] = v
 	}
@@ -99,12 +99,21 @@ func (t *Topic) GetClients() map[string]*Client {
 }
 
 // Check if a client is subscribed to the topic
-func (t *Topic) IsSubscribed(c *Client) bool {
+func (t *Topic) IsSubscribed(c *Instance) bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	_, ok := t.clients[c.id]
 	return ok
+}
+
+type connectionData struct {
+	InstanceData []instanceData `json:"instances"`
+}
+
+type instanceData struct {
+	ID   string    `json:"id"`
+	Data eventData `json:"data"`
 }
 
 type eventData struct {

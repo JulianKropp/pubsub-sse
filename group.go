@@ -17,12 +17,12 @@ type Group struct {
 	topics map[string]*Topic
 
 	// Clients is a map of client IDs to clients.
-	clients map[string]*Client
+	clients map[string]*Instance
 
 	// Events:
-	OnNewClient        *eventManager[*Client]
+	OnNewClient        *eventManager[*Instance]
 	OnNewGroupTopic    *eventManager[*Topic]
-	OnRemoveClient     *eventManager[*Client]
+	OnRemoveClient     *eventManager[*Instance]
 	OnRemoveGroupTopic *eventManager[*Topic]
 }
 
@@ -39,11 +39,11 @@ func newGroup() *Group {
 		lock: &sync.Mutex{},
 
 		topics:  map[string]*Topic{},
-		clients: map[string]*Client{},
+		clients: map[string]*Instance{},
 
-		OnNewClient:        newEventManager[*Client](),
+		OnNewClient:        newEventManager[*Instance](),
 		OnNewGroupTopic:    newEventManager[*Topic](),
-		OnRemoveClient:     newEventManager[*Client](),
+		OnRemoveClient:     newEventManager[*Instance](),
 		OnRemoveGroupTopic: newEventManager[*Topic](),
 	}
 }
@@ -81,12 +81,12 @@ func (g *Group) GetTopicByID(id string) (*Topic, bool) {
 }
 
 // GetClients returns a map of clients.
-func (g *Group) GetClients() map[string]*Client {
+func (g *Group) GetClients() map[string]*Instance {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	// Create a copy of the clients map
-	newmap := make(map[string]*Client)
+	newmap := make(map[string]*Instance)
 	for k, v := range g.clients {
 		newmap[k] = v
 	}
@@ -96,7 +96,7 @@ func (g *Group) GetClients() map[string]*Client {
 }
 
 // Get client by ID
-func (g *Group) GetClientByID(id string) (*Client, bool) {
+func (g *Group) GetClientByID(id string) (*Instance, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -201,7 +201,7 @@ func (g *Group) RemoveTopic(t *Topic) {
 // 0. Check if client already exists in the group
 // 1. Add client to the group
 // 2. Add group to client
-func (g *Group) AddClient(c *Client) {
+func (g *Group) AddClient(c *Instance) {
 	// Check if client already exists in the group
 	if _, ok := g.GetClientByID(c.GetID()); ok {
 		log.Errorf("Client already exists in group")
@@ -234,7 +234,7 @@ func (g *Group) AddClient(c *Client) {
 // 2. Remove client from the group
 // 3. Remove group from client
 // 4. Inform client about the removed topic
-func (g *Group) RemoveClient(c *Client) {
+func (g *Group) RemoveClient(c *Instance) {
 	// Check if client exists in the group
 	if _, ok := g.GetClientByID(c.GetID()); !ok {
 		log.Errorf("Client does not exist in group")

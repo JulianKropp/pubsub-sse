@@ -69,10 +69,10 @@ func TestSSEPubSubService_OnNewClient(t *testing.T) {
 	counter := 0
 
 	// client
-	var client *Client
+	var client *Instance
 
 	// Event
-	s.OnNewClient.Listen(func(c *Client) {
+	s.OnNewClient.Listen(func(c *Instance) {
 		counter++
 		if client != c {
 			t.Errorf("Expected %v, got %v", client, c)
@@ -165,10 +165,10 @@ func TestSSEPubSubService_OnRemoveClient(t *testing.T) {
 	counter := 0
 
 	// client
-	var client *Client
+	var client *Instance
 
 	// Event
-	s.OnRemoveClient.Listen(func(c *Client) {
+	s.OnRemoveClient.Listen(func(c *Instance) {
 		counter++
 		if client != c {
 			t.Errorf("Expected %v, got %v", client, c)
@@ -1160,7 +1160,7 @@ func TestGroup_OnNewClient(t *testing.T) {
 	counter := 0
 
 	// Event
-	g.OnNewClient.Listen(func(cl *Client) {
+	g.OnNewClient.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1234,7 +1234,7 @@ func TestGroup_OnRemoveClient(t *testing.T) {
 	counter := 0
 
 	// Event
-	g.OnRemoveClient.Listen(func(cl *Client) {
+	g.OnRemoveClient.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1337,13 +1337,13 @@ func TestTopic_OnNewClient(t *testing.T) {
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
 
-	var c *Client
+	var c *Instance
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
 	// Event
-	id := topic.OnNewClient.Listen(func(cl *Client) {
+	id := topic.OnNewClient.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1369,7 +1369,7 @@ func TestTopic_OnNewClient(t *testing.T) {
 	topic = group.NewTopic()
 
 	// Event
-	topic.OnNewClient.Listen(func(cl *Client) {
+	topic.OnNewClient.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1406,7 +1406,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	counter := 0
 
 	// Event
-	id := topic.OnNewSubOfClient.Listen(func(cl *Client) {
+	id := topic.OnNewSubOfClient.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1432,7 +1432,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	topic = c.NewPrivateTopic()
 
 	// Event
-	topic.OnNewSubOfClient.Listen(func(cl *Client) {
+	topic.OnNewSubOfClient.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1460,7 +1460,7 @@ func TestTopic_OnNewSubOfClient(t *testing.T) {
 	group.AddClient(c)
 
 	// Event
-	topic.OnNewSubOfClient.Listen(func(cl *Client) {
+	topic.OnNewSubOfClient.Listen(func(cl *Instance) {
 		counter++
 		if c != cl {
 			t.Errorf("Expected %v, got %v", c, cl)
@@ -1536,7 +1536,7 @@ func TestTopic_OnRemoveClient(t *testing.T) {
 
 	helperfunc := func(top *Topic) string {
 		// Event
-		return top.OnRemoveClient.Listen(func(cl *Client) {
+		return top.OnRemoveClient.Listen(func(cl *Instance) {
 			counter++
 			if c != cl {
 				t.Errorf("Expected %v, got %v", c, cl)
@@ -1650,7 +1650,7 @@ func TestTopic_OnUnsubOfClient(t *testing.T) {
 
 	helperfunc := func(top *Topic) string {
 		// Event
-		return top.OnUnsubOfClient.Listen(func(cl *Client) {
+		return top.OnUnsubOfClient.Listen(func(cl *Instance) {
 			counter++
 			if c != cl {
 				t.Errorf("Expected %v, got %v", c, cl)

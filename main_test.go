@@ -31,7 +31,7 @@ func startEventServer(ssePubSub *SSEPubSubService, t *testing.T, port int) {
 
 // Makes an http request to localhost:8080/event
 // This will be an SSE connection and will be open for 10s
-func httpToEvent(t *testing.T, client *Client, port int, connected, done chan bool, returnValue *[]eventData) {
+func httpToEvent(t *testing.T, client *Instance, port int, connected, done chan bool, returnValue *[]eventData) {
 	hclient := http.Client{}
 	req, err := http.NewRequest("GET", "http://localhost:"+strconv.Itoa(port)+"/event?client_id="+client.GetID(), nil)
 	if err != nil {
