@@ -55,14 +55,29 @@ func (s *SSEPubSubService) GetID() string {
 	return s.id
 }
 
+// Get connection by ID
+func (s *SSEPubSubService) getConnectionByID(id string) (*Connection, bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	c, ok := s.connections[id]
+	return c, ok
+}
+
 // Create new instance
-func (s *SSEPubSubService) NewInstance(c ...*Connection) *Instance {
+func (s *SSEPubSubService) NewInstance(con_id ...string) *Instance {
 	var con *Connection
 
-	if len(c) == 0 {
+	if len(con_id) == 0 {
 		con = s.newConnection()
 	} else {
-		con = c[0]
+		conid := con_id[0]
+		if c, ok := s.getConnectionByID(conid); ok {
+			con = c
+		} else {
+			log.Warnf("Connection %s does not exist in sSEPubSubService. Create new connection", conid)
+			con = s.newConnection()
+		}
 	}
 
 	// Create a new instance

@@ -12,12 +12,18 @@ import (
 func AddInstance(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Create a new instance
-	c := s.NewInstance()
+	// Get connection_id
+	var c *Instance
+	connectionID := r.URL.Query().Get("connection_id")
+	if connectionID == "" {
+		c = s.NewInstance()
+	} else {
+		// Create a new instance
+		c = s.NewInstance(connectionID)
+	}
 
 	// Send the instance ID
-
-	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "instance_id": c.GetID()})
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "instance_id": c.GetID(), "connection_id": c.connection.id})
 }
 
 // AddPublicTopic handles HTTP requests for adding a new public topic.
