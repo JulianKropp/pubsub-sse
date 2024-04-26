@@ -254,6 +254,13 @@ func (c *Connection) changeStatus(s Status) {
 	for _, i := range c.GetInstances() {
 		i.OnStatusChange.Emit(c.status)
 	}
+
+	if s == Stopped || s == Timeout {
+		// Remove all instances
+		for _, i := range c.GetInstances() {
+			c.sSEPubSubService.RemoveInstance(i)
+		}
+	}
 }
 
 // Timeout check

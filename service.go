@@ -106,7 +106,9 @@ func (s *SSEPubSubService) NewInstance(con_id ...string) *Instance {
 func (s *SSEPubSubService) RemoveInstance(i *Instance) {
 	if len(i.connection.GetInstances()) - 1 == 0 {
 		// stop the instance
-		i.connection.stop(Stopped)
+		if i.GetStatus() != Stopped || i.GetStatus() != Timeout {
+			i.connection.stop(Stopped)
+		}
 
 		i.connection.removeInstance(i)
 
