@@ -755,16 +755,16 @@ loop:
 		select {
 		case msg, ok := <-c.stream:
 			if !ok {
-				log.Infof("[C:%s] Instance stopped receiving", c.GetID())
+				log.Infof("[C:%s] Connection stopped receiving", c.GetID())
 				break loop
 			}
-			log.Infof("[C:%s] Sending message to instance: %s", c.GetID(), msg)
+			log.Infof("[C:%s] Sending message to connection: %s", c.GetID(), msg)
 			onEvent(msg)
 		case <-ctx.Done():
-			log.Infof("[C:%s] Instance stopped receiving", c.GetID())
+			log.Infof("[C:%s] Connection stopped receiving", c.GetID())
 			break loop
 		case <-c.stopchan:
-			log.Infof("[C:%s] Instance stopped receiving", c.GetID())
+			log.Infof("[C:%s] Connection stopped receiving", c.GetID())
 			break loop
 		}
 	}

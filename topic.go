@@ -160,7 +160,7 @@ func (t *Topic) Pub(msg interface{}) error {
 		fulldata.InstanceData[0].ID = c.GetID()
 		err := c.send(fulldata) // ignore error. Fire and forget.
 		if err != nil {
-			log.Warnf("[T:%s]: Warning sending data to instance: %s", t.GetID(), err.Error())
+			log.Warnf("[T:%s]: Warning sending data to connection: %s", t.GetID(), err.Error())
 		}
 	}
 
