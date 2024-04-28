@@ -14,25 +14,8 @@
     <script src="/pubsub-sse.js"></script>
     <script>
         // Create a new PubSubSSE
-        const pSSSE = new PubSubSSE();
-
-        // Make request to /add/user and get the json response with id of the new user
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', '/add/user');
-        xhr.send();
-        xhr.onload = function () {
-            const response = JSON.parse(xhr.responseText);
-            // response: Object { client_id: "C-b9d8b698-99d4-47c3-946d-1ab1a1433624", ok: "true" }
-            console.log(response);
-
-            id = response.client_id;
-
-            pSSSE.url = '/event?client_id=' + id
-
-            pSSSE.open();
-
-            // const button = document.querySelector('button');
-        };
+        const pSSSE = new PubSubSSE("http://localhost:8080");
+        pSSSE.open();
     </script>
 </body>
 
