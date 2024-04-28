@@ -1,4 +1,4 @@
-// TODE:
+// TODO:
 // - [ ] What if main tab closes? Fallback to SSE?
 // - [ ] What if the main tab reloads. It will get a new connection_id and all outher tabs will timeout and will only receve the data of the new connection
 // - [ ] What if second tab closes? How to handle the instance which should not receve any messages anymore, but the main tab still does for the second tab?
@@ -97,6 +97,12 @@ class PubSubSSE {
             this.connection_id = response.connection_id;
             this.instance_id = response.instance_id;
             this.startConnection();
+        };
+        xhr.onerror = () => {
+            console.log('Failed to register new instance due to network error or server unavailability.');
+            if (this.onError) {
+                this.onError();
+            }
         };
     }
 
