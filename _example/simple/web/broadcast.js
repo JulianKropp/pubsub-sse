@@ -1,7 +1,8 @@
 class Tab {
     constructor() {
         this.id = Date.now() + Math.random(); // Unique identifier for each tab, lower is older
-        this.isMaster = false;
+        this.isMaster = null;
+        this.currentMaster = null;
         this.channel = new BroadcastChannel('tab_communication');
         this.tabs = {}; // Keeps track of other tabs
 
@@ -14,7 +15,7 @@ class Tab {
 
         // Broadcast presence to other tabs and request current status
         this.broadcast('new', this.id);
-        setTimeout(() => this.electMaster(), 100); // Wait for responses
+        setTimeout(() => this.electMaster(), this.timeout); // Wait for responses
 
         this.pingInterval = setInterval(() => this.broadcast('ping', this.id), this.pingInterval);
         this.checkTabsInterval = setInterval(() => this.checkTabs(), this.checkTabsInterval);
@@ -44,8 +45,7 @@ class Tab {
                 if (this.isMaster && data > this.id) {
                     this.electMaster(); // Elect self if older (lower ID)
                 } else if (data !== this.id) {
-                    this.isMaster = false;
-                    this.updateStatus();
+                    this.setMaster(data)
                 }
                 break;
         }
@@ -67,12 +67,24 @@ class Tab {
         }
         const lowestId = Math.min(this.id, ...Object.keys(this.tabs).map(key => parseFloat(key)));
         if (lowestId === this.id) {
-            this.isMaster = true;
             this.broadcast('master', this.id);
-        } else {
-            this.isMaster = false;
+            this.setMaster(this.id)
         }
-        this.updateStatus();
+    }
+
+    setMaster(master) {
+        if (this.currentMaster !== master) {
+            this.currentMaster = master;
+            let oldIsMaster = this.isMaster;
+            if (this.currentMaster === this.id) {
+                this.isMaster = true;
+            } else {
+                this.isMaster = false;
+            }
+            if (oldIsMaster !== this.isMaster) {
+                this.updateStatus();
+            }
+        }
     }
 
     updateStatus() {
