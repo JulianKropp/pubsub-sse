@@ -1,51 +1,74 @@
-class Tab {
+class TabManager {
     constructor() {
-        this.id = Date.now() + Math.random(); // Unique identifier for each tab, lower is older
-        this.isMaster = null;
-        this.currentMaster = null;
+        let thistab = new Tab()
+        this.tab = thistab;
+        this.tabs = [];
+        this.tabs[this.tab.id] = thistab;
+        this.masterTab = null;
+
         this.channel = new BroadcastChannel('tab_communication');
-        this.tabs = {}; // Keeps track of other tabs
+        console.log(`TabManager initialized with tab ID ${this.tab.id}`);
 
         // Timeout and intervals
-        this.pingInterval = 1000;
-        this.checkTabsInterval = 1000;
-        this.timeout = 3000;
+        this.pingInterval = 100;
+        this.checkTabsInterval = 100;
+        this.timeout = 300;
 
         this.channel.onmessage = this.handleMessage.bind(this);
 
         // Broadcast presence to other tabs and request current status
-        this.broadcast('new', this.id);
-        setTimeout(() => this.electMaster(), this.timeout); // Wait for responses
+        this.broadcast('new', this.tab.id);
+        setTimeout(() => {
+            console.log('Electing master after initial timeout');
+            this.electMaster();
+        }, this.timeout); // Wait for responses
 
-        this.pingInterval = setInterval(() => this.broadcast('ping', this.id), this.pingInterval);
-        this.checkTabsInterval = setInterval(() => this.checkTabs(), this.checkTabsInterval);
+        this.pingIntervalId = setInterval(() => {
+            console.log('Sending ping');
+            this.broadcast('ping', this.tab.id);
+        }, this.pingInterval);
+
+        this.checkTabsIntervalId = setInterval(() => {
+            console.log('Checking tabs');
+            this.checkTabs();
+        }, this.checkTabsInterval);
     }
 
     broadcast(type, data) {
-        this.channel.postMessage({ type, data, from: this.id });
+        console.log(`Broadcasting message type: ${type}, data: ${data}`);
+        this.channel.postMessage({ type, data, from: this.tab.id });
     }
 
     handleMessage(event) {
         const { type, data, from } = event.data;
-        if (from === this.id) return; // Ignore self-sent messages
+        console.log(`Received message from ${from}: ${type}`);
+        if (from === this.tab.id) {
+            console.log('Ignoring self-sent message');
+            return; // Ignore self-sent messages
+        }
+
+        // Create tab if it doesn't exist
+        if (!this.tabs[from]) {
+            this.tabs[from] = new Tab(from);
+            console.log(`New tab created with ID ${from}`);
+        }
 
         switch (type) {
             case 'new':
-                this.tabs[from] = Date.now(); // Acknowledge new tab and set last ping time
-                this.broadcast('ack', this.id); // Acknowledge back
+                this.broadcast('ack', this.tab.id);
                 this.electMaster();
                 break;
             case 'ack':
-                this.tabs[from] = Date.now(); // Register acknowledged tab and set last ping time
-                break;
             case 'ping':
-                this.tabs[from] = Date.now(); // Update last ping time for this tab
+                this.tabs[from].resetTimer();
+                console.log(`Timer reset for tab ${from}`);
                 break;
             case 'master':
-                if (this.isMaster && data > this.id) {
+                if (this.tab.isMaster && data > this.tab.id) {
+                    console.log('Higher ID master detected, re-electing');
                     this.electMaster(); // Elect self if older (lower ID)
-                } else if (data !== this.id) {
-                    this.setMaster(data)
+                } else if (data !== this.tab.id) {
+                    this.setMaster(data);
                 }
                 break;
         }
@@ -54,44 +77,68 @@ class Tab {
     checkTabs() {
         const now = Date.now();
         Object.keys(this.tabs).forEach(tabId => {
-            if (now - this.tabs[tabId] > this.timeout) { // Remove tab if last ping was more than 5 seconds ago
-                delete this.tabs[tabId];
+            if (now - this.tabs[tabId].lastMessage > this.timeout) {
+                console.log(`Removing inactive tab ${tabId}`);
+                if (this.tab.id !== tabId) {
+                    delete this.tabs[tabId];
+                }
                 this.electMaster();
             }
         });
     }
 
     electMaster() {
-        if (Object.keys(this.tabs).length === 0 || !this.tabs[this.id]) {
-            this.tabs[this.id] = Date.now(); // Ensure current tab is in list
+        console.log('Electing master tab');
+        if (Object.keys(this.tabs).length === 0 || !this.tabs[this.tab.id]) {
+            this.tabs[this.tab.id] = this.tab; // Ensure current tab is in list
         }
-        const lowestId = Math.min(this.id, ...Object.keys(this.tabs).map(key => parseFloat(key)));
-        if (lowestId === this.id) {
-            this.broadcast('master', this.id);
-            this.setMaster(this.id)
+        const lowestId = Math.min(this.tab.id, ...Object.keys(this.tabs).map(key => parseFloat(key)));
+        console.log(`Lowest ID: ${lowestId}`);
+        if (lowestId === this.tab.id) {
+            this.broadcast('master', this.tab.id);
+            this.setMaster(this.tab.id);
         }
     }
 
+    isMaster() {
+        return this.masterTab && this.masterTab.id === this.tab.id;
+    }
+
     setMaster(master) {
-        if (this.currentMaster !== master) {
-            this.currentMaster = master;
-            let oldIsMaster = this.isMaster;
-            if (this.currentMaster === this.id) {
-                this.isMaster = true;
-            } else {
-                this.isMaster = false;
-            }
-            if (oldIsMaster !== this.isMaster) {
+        const oldIsMaster = this.isMaster();
+        if (!this.masterTab || this.masterTab.id !== master) {
+            this.masterTab = this.tabs[master];
+            console.log(`Master set to tab ID ${master}`);
+
+            if (oldIsMaster !== this.isMaster()) {
                 this.updateStatus();
             }
         }
     }
 
     updateStatus() {
-        console.log('Status:', this.isMaster ? 'Master' : 'Slave');
+        console.log('Status:', this.isMaster() ? 'Master' : 'Slave');
         const statusElement = document.getElementById('status');
         if (statusElement) {
-            statusElement.textContent = this.isMaster ? 'Master' : 'Slave';
+            statusElement.textContent = this.isMaster() ? 'Master' : 'Slave';
         }
+    }
+}
+
+class Tab {
+    constructor(id = null) {
+        if (id === null) {
+            this.id = Date.now() + Math.random(); // Unique identifier for each tab, lower is older
+        } else {
+            this.id = id;
+        }
+
+        this.lastMessage = Date.now();
+        console.log(`Tab created with ID ${this.id}`);
+    }
+
+    resetTimer() {
+        console.log(`Resetting last message time for tab ${this.id}`);
+        this.lastMessage = Date.now();
     }
 }
