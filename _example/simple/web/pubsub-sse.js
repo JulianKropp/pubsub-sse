@@ -16,15 +16,33 @@ class Topic {
     // Additional methods for topic-related functionalities
 }
 
+class Tab {
+    constructor(id = null) {
+        if (id === null) {
+            this.id = Date.now() + Math.random(); // Unique identifier for each tab, lower is older
+        } else {
+            this.id = id;
+        }
+
+        this.lastMessage = Date.now();
+
+        this.instance_id = null;
+        this.connection_id = null;
+
+        console.log(`New tab: ${this.id}`);
+
+    }
+
+    resetTimer() {
+        this.lastMessage = Date.now();
+    }
+}
+
 class PubSubSSE {
     constructor(url = `http://localhost`) {
         this.url = url;
         this.connection_type = `sse`; // sse or broadcastchannel
-        this.channel = new BroadcastChannel(`pubsub-sse-channel`);
-        this.instance_id = null;
-        this.connection_id = null;
-        this.connection_id_by_broadcastchannel = null;
-        this.instance_id_by_broadcastchannel = null;
+        this.channel = new BroadcastChannel('pubsubsse_communication');
         this.evtSource = null;
         this.topics = {}; // Stores Topic objects
 
@@ -33,56 +51,181 @@ class PubSubSSE {
         this.onError = null;
         this.onNewTopic = null;
         this.onRemovedTopic = null;
+
+
+        let thistab = new Tab()
+        this.tab = thistab;
+        this.tabs = [];
+        this.tabs[this.tab.id] = thistab;
+        this.masterTab = null;
+
+        this.tabChannel = new BroadcastChannel('tab_communication');
+
+        // Timeout and intervals
+        this.pingInterval = 100;
+        this.checkTabsInterval = 100;
+        this.timeout = 300;
+
+        this.tabChannel.onmessage = this.handleMessage.bind(this);
+
+        // Broadcast presence to other tabs and request current status
+        this.broadcast('new', this.tab.id);
+        setTimeout(() => {
+            console.log('Electing master after initial timeout');
+            this.electMaster();
+        }, this.timeout); // Wait for responses
+
+        this.pingIntervalId = setInterval(() => {
+            this.broadcast('ping', this.tab.id);
+        }, this.pingInterval);
+
+        this.checkTabsIntervalId = setInterval(() => {
+            this.checkTabs();
+        }, this.checkTabsInterval);
+    }
+
+    broadcast(type, tabID) {
+        let data = { tabID: null, instance_id: null, connection_id: null };
+
+        // find tab
+        const tab = this.tabs[tabID];
+        if (tab) {
+            data.tabID = tab.id;
+            data.instance_id =  this.tab.instance_id;
+            data.connection_id = this.tab.connection_id;
+        } else {
+            console.log(`Tab ${tabID} not found`);
+            data.tabID = tabID;
+        }
+
+        this.tabChannel.postMessage({ type, data, from: this.tab.id });
+    }
+
+    handleMessage(event) {
+        const { type, data, from } = event.data;
+        if (from === this.tab.id) {
+            return; // Ignore self-sent messages
+        }
+
+        // Create tab if it doesn't exist
+        if (!this.tabs[from]) {
+            this.tabs[from] = new Tab(from);
+        }
+        if (!this.tabs[data.tabID]) {
+            this.tabs[data.tabID] = new Tab(data.tabID);
+        }
+
+        // Get data tab
+        const dataTab = this.tabs[data.tabID];
+        dataTab.instance_id = data.instance_id;
+        dataTab.connection_id = data.connection_id;
+
+        switch (type) {
+            case 'new':
+                this.broadcast('ack', this.tab.id);
+                this.electMaster();
+                break;
+            case 'ack':
+            case 'ping':
+                this.tabs[from].resetTimer();
+                break;
+            case 'master':
+                if (this.tab.isMaster && data.tabID > this.tab.id) {
+                    this.electMaster(); // Elect self if older (lower ID)
+                } else if (data !== this.tab.id) {
+                    this.setMaster(data);
+                }
+                break;
+        }
+    }
+
+    checkTabs() {
+        const now = Date.now();
+        Object.keys(this.tabs).forEach(tabId => {
+            if (this.tab.id != tabId) {
+                if (now - this.tabs[tabId].lastMessage > this.timeout) {
+                    console.log(`Removing inactive tab ${tabId}`);
+                    delete this.tabs[tabId];
+                    this.electMaster();
+                }
+            }
+        });
+    }
+
+    electMaster() {
+        if (Object.keys(this.tabs).length === 0 || !this.tabs[this.tab.id]) {
+            this.tabs[this.tab.id] = this.tab; // Ensure current tab is in list
+        }
+        const lowestId = Math.min(this.tab.id, ...Object.keys(this.tabs).map(key => parseFloat(key)));
+        if (lowestId === this.tab.id) {
+            this.broadcast('master', this.tab.id);
+            this.setMaster(this.tab.id);
+        }
+    }
+
+    // Returns true if this tab is the master tab
+    isMaster() {
+        return this.masterTab && this.masterTab.id === this.tab.id;
+    }
+
+    setMaster(masterID) {
+        const oldIsMaster = this.isMaster();
+        if (!this.masterTab || this.masterTab.id !== masterID) {
+            this.masterTab = this.tabs[masterID];
+
+            console.log(`Master set to tab ID ${masterID}`);
+
+            if (oldIsMaster !== this.isMaster()) {
+                this.updateStatus();
+            }
+        }
+    }
+
+    updateStatus() {
+        console.log('Status:', this.isMaster() ? 'Master' : 'Slave');
+        const statusElement = document.getElementById('status');
+        if (statusElement) {
+            statusElement.textContent = this.isMaster() ? 'Master' : 'Slave';
+        }
+
+        if (this.isMaster()) {
+            this.connection_type = `sse`;
+        } else { 
+            this.connection_type = `broadcastchannel`;
+        }
+    }
+
+
+    setConnectionType() {
+        if (this.isMaster()) {
+            this.connection_type = `sse`;
+        } else {
+            this.connection_type = `broadcastchannel`;
+        }
     }
 
     open() {
-        this.instance_id = null;
-        this.connection_id = null;
-        this.connection_id_by_broadcastchannel = null;
-        this.instance_id_by_broadcastchannel = null;
+        this.tab.instance_id = null;
+        this.tab.connection_id = null;
 
-        // Send a message to the channel asking for other tabs
-        this.channel.postMessage({ type: `request_presence` });
-
-        console.log(`Requesting presence. Waiting for response.`);
-
-        // Listen for responses or lack thereof
-        const responseTimeout = setTimeout(() => {
-            if (!this.connection_id) { // If no response in 100ms, make a new user request
-
-                console.log(`No response received. Registering new instance.`);
-
-                this.connection_type = `sse`;
-                this.registerNewInstance();
-            }
-        }, 100);
-
-        this.channel.onmessageerror = (event) => {
-            console.log(`Error with broadcastchannel: ` + event);
-        };
-
-        this.channel.onmessage = (event) => {
-            if (event.data.type === `response_presence` && !this.connection_id) {
-
-                console.log(`Received response broadcastchannel message: ` + JSON.stringify(event.data));
-
-                // Cancel the timeout as we have a response
-                clearTimeout(responseTimeout);
-                this.connection_type = `broadcastchannel`;
-                this.connection_id_by_broadcastchannel = event.data.connection_id;
-                this.instance_id_by_broadcastchannel = event.data.instance_id;
-
-                this.registerNewInstance();
-            }
-        };
+        // wait until this.masterTab isnt null
+        if (!this.masterTab) {
+            setTimeout(() => {
+                this.open();
+            }, 100);
+            return;
+        } else {
+            this.setConnectionType();
+            this.registerNewInstance();
+        }
     }
 
     registerNewInstance() {
         const xhr = new XMLHttpRequest();
-        if (this.connection_id_by_broadcastchannel) {
+        if (this.masterTab.connection_id) {
             // This will register a new instance and will send all the data to the connection_id which is normaly anouther tab (instance)
             // If the connection_id is not valid, the server will return a new connection_id
-            xhr.open(`GET`, `${this.url}/add/user?connection_id=${this.connection_id_by_broadcastchannel}`);
+            xhr.open(`GET`, `${this.url}/add/user?connection_id=${this.masterTab.connection_id}`);
         } else {
             // This will register a new instance and will send all the data to this tab (instance)
             xhr.open(`GET`, `${this.url}/add/user`);
@@ -94,8 +237,8 @@ class PubSubSSE {
                 return;
             }
             const response = JSON.parse(xhr.responseText);
-            this.connection_id = response.connection_id;
-            this.instance_id = response.instance_id;
+            this.tab.connection_id = response.connection_id;
+            this.tab.instance_id = response.instance_id;
             this.startConnection();
         };
         xhr.onerror = () => {
@@ -112,29 +255,21 @@ class PubSubSSE {
             this.evtSource.close();
         }
 
+        // Remove broadcastchannel
+        this.channel.close();
+        this.channel = new BroadcastChannel('pubsubsse_communication');
+        this.channel.onmessage = null;
+
         // Open new connection based on connection type
         if (this.connection_type === `sse`) {
             this.connectWithSSE(); // Open a new SSE connection
         } else if (this.connection_type === `broadcastchannel`) {
-            if (this.connection_id_by_broadcastchannel === this.connection_id) {
+            if (this.masterTab.connection_id === this.tab.connection_id) {
                 this.connectWithBroadcastChannel(); // Listen for messages on the BroadcastChannel
             } else {
                 // Fall back to SSE if the connection_id is not valid
                 this.connectWithSSE();
             }
-        }
-
-        // Once everything is set up, prepare to handle future requests
-        if (this.connection_type === `sse`) {
-            this.channel.onmessage = (event) => {
-                if (event.data.type === 'request_presence') {
-                    this.channel.postMessage({
-                        type: 'response_presence',
-                        connection_id: this.connection_id,
-                        instance_id: this.instance_id
-                    });
-                }
-            };
         }
     }
 
@@ -145,7 +280,7 @@ class PubSubSSE {
             this.evtSource.close();
         }
 
-        this.evtSource = new EventSource(`${this.url}/event?instance_id=${this.instance_id}`);
+        this.evtSource = new EventSource(`${this.url}/event?instance_id=${this.tab.instance_id}`);
 
         // on open event
         this.evtSource.onopen = () => {
@@ -238,7 +373,7 @@ class PubSubSSE {
     handleData(data) {
         // Get data with this instance_id
         // Example data: {`instances`:[{`id`:`I-ba6b975b-4b18-40d1-88c5-ee947f1888d9`,`data`:{`sys`:null,`updates`:[{`topic`:`T-bc57baf3-4c76-4ae9-a8dd-0f1726f7ea47`,`data`:`DATAAAAAA`}]}}]}
-        const instanceData = data.instances.find(instance => instance.id === this.instance_id);
+        const instanceData = data.instances.find(instance => instance.id ===  this.tab.instance_id);
         if (!instanceData) {
             return;
         }
