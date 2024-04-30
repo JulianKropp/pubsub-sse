@@ -1,6 +1,8 @@
 // TODO:
 // - [ ] What if the main tab sse connection fails?
 // - [ ] What if second tab closes? How to handle the instance which should not receve any messages anymore, but the main tab still does for the second tab?
+// - [ ] What if connection_id changes or there are multiple connection_id?
+// - [ ] Merge process if there are multiple masters
 
 class Topic {
     constructor(id, type) {
@@ -42,7 +44,7 @@ class PubSubSSE {
         this.url = url;
         this.status = `disconnected`; // connecting, connected or disconnected
         this.connection_type = `sse`; // sse or broadcastchannel
-        this.channel = new BroadcastChannel('pubsubsse_communication');
+        this.channel = null;
         this.evtSource = null;
         this.topics = {}; // Stores Topic objects
 
@@ -276,8 +278,10 @@ class PubSubSSE {
         }
 
         // Remove broadcastchannel
-        this.channel.close();
-        this.channel = new BroadcastChannel('pubsubsse_communication');
+        if (this.channel != null) {
+            this.channel.close();
+        }
+        this.channel = new BroadcastChannel(`pubsubsse_communication_${this.tab.connection_id}`);
         this.channel.onmessage = null;
 
         // Set status to connected
