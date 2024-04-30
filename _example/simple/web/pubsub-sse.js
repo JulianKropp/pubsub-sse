@@ -1,6 +1,5 @@
 // TODO:
-// - [ ] What if main tab closes? Fallback to SSE?
-// - [ ] What if the main tab reloads. It will get a new connection_id and all outher tabs will timeout and will only receve the data of the new connection
+// - [ ] What if the main tab sse connection fails?
 // - [ ] What if second tab closes? How to handle the instance which should not receve any messages anymore, but the main tab still does for the second tab?
 
 class Topic {
@@ -146,6 +145,9 @@ class PubSubSSE {
             if (this.tab.id != tabId) {
                 if (now - this.tabs[tabId].lastMessage > this.timeout) {
                     console.log(`Removing inactive tab ${tabId}`);
+                    if(this.isMaster() || this.tabs[tabId].id === this.masterTab.id) {
+                        this.removeInstance(this.tabs[tabId].instance_id);
+                    }
                     delete this.tabs[tabId];
                     this.electMaster();
                 }
@@ -202,6 +204,22 @@ class PubSubSSE {
         } else {
             this.connection_type = `broadcastchannel`;
         }
+    }
+
+    removeInstance(instance_id) {
+        const xhr = new XMLHttpRequest();
+        xhr.open(`GET`, `${this.url}/remove/user?instance_id=${instance_id}`);
+        xhr.send();
+        xhr.onload = () => {
+            if (xhr.status !== 200) {
+                console.log(`Error removing instance.`);
+                return;
+            }
+            console.log(`Instance removed.`);
+        };
+        xhr.onerror = () => {
+            console.log('Failed to remove instance due to network error or server unavailability.');
+        };
     }
 
     open() {
