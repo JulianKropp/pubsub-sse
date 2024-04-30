@@ -41,6 +41,7 @@ class Tab {
 class PubSubSSE {
     constructor(url = `http://localhost`) {
         this.url = url;
+        this.status = `disconnected`; // connecting, connected or disconnected
         this.connection_type = `sse`; // sse or broadcastchannel
         this.channel = new BroadcastChannel('pubsubsse_communication');
         this.evtSource = null;
@@ -133,7 +134,7 @@ class PubSubSSE {
                 if (this.tab.isMaster && data.tabID > this.tab.id) {
                     this.electMaster(); // Elect self if older (lower ID)
                 } else if (data !== this.tab.id) {
-                    this.setMaster(data);
+                    this.setMaster(data.tabID);
                 }
                 break;
         }
@@ -173,7 +174,7 @@ class PubSubSSE {
         if (!this.masterTab || this.masterTab.id !== masterID) {
             this.masterTab = this.tabs[masterID];
 
-            console.log(`Master set to tab ID ${masterID}`);
+            console.log(`Master set to tab ID ${JSON.stringify(masterID)}`);
 
             if (oldIsMaster !== this.isMaster()) {
                 this.updateStatus();
@@ -188,10 +189,9 @@ class PubSubSSE {
             statusElement.textContent = this.isMaster() ? 'Master' : 'Slave';
         }
 
-        if (this.isMaster()) {
-            this.connection_type = `sse`;
-        } else { 
-            this.connection_type = `broadcastchannel`;
+        this.setConnectionType();
+        if (this.status === `connected`) {
+            this.startConnection();
         }
     }
 
@@ -205,12 +205,14 @@ class PubSubSSE {
     }
 
     open() {
+        this.status = `connecting`;
         this.tab.instance_id = null;
         this.tab.connection_id = null;
 
         // wait until this.masterTab isnt null
         if (!this.masterTab) {
             setTimeout(() => {
+                console.log(`Waiting for master tab: ${JSON.stringify(this.masterTab)}`);
                 this.open();
             }, 100);
             return;
@@ -259,6 +261,9 @@ class PubSubSSE {
         this.channel.close();
         this.channel = new BroadcastChannel('pubsubsse_communication');
         this.channel.onmessage = null;
+
+        // Set status to connected
+        this.status = `connected`;
 
         // Open new connection based on connection type
         if (this.connection_type === `sse`) {
