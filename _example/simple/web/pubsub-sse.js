@@ -119,6 +119,10 @@ class PubSubSSE {
 
         // Get data tab
         const dataTab = this.tabs[data.tabID];
+        if (dataTab === this.masterTab && data.connection_id != dataTab.connection_id) {
+            console.log(`Master tab connection_id changed. Reconnecting.`);
+            this.changeConnection_id();
+        }
         dataTab.instance_id = data.instance_id;
         dataTab.connection_id = data.connection_id;
 
@@ -132,7 +136,7 @@ class PubSubSSE {
                 this.tabs[from].resetTimer();
                 break;
             case 'master':
-                if (this.tab.isMaster && data.tabID > this.tab.id) {
+                if (this.isMaster() && data.tabID > this.tab.id) {
                     this.electMaster(); // Elect self if older (lower ID)
                 } else if (data !== this.tab.id) {
                     this.setMaster(data.tabID);
@@ -209,19 +213,21 @@ class PubSubSSE {
     }
 
     removeInstance(instance_id) {
-        const xhr = new XMLHttpRequest();
-        xhr.open(`GET`, `${this.url}/remove/user?instance_id=${instance_id}`);
-        xhr.send();
-        xhr.onload = () => {
-            if (xhr.status !== 200) {
-                console.log(`Error removing instance.`);
-                return;
-            }
-            console.log(`Instance removed.`);
-        };
-        xhr.onerror = () => {
-            console.log('Failed to remove instance due to network error or server unavailability.');
-        };
+        if (instance_id) {
+            const xhr = new XMLHttpRequest();
+            xhr.open(`GET`, `${this.url}/remove/user?instance_id=${instance_id}`);
+            xhr.send();
+            xhr.onload = () => {
+                if (xhr.status !== 200) {
+                    console.log(`Error removing instance.`);
+                    return;
+                }
+                console.log(`Instance removed.`);
+            };
+            xhr.onerror = () => {
+                console.log('Failed to remove instance due to network error or server unavailability.');
+            };
+        }
     }
 
     open() {
@@ -265,6 +271,28 @@ class PubSubSSE {
         };
         xhr.onerror = () => {
             console.log('Failed to register new instance due to network error or server unavailability.');
+            if (this.onError) {
+                this.onError();
+            }
+        };
+    }
+
+    changeConnection_id() {
+        this.tab.connection_id = null;
+        const xhr = new XMLHttpRequest();
+        xhr.open(`GET`, `${this.url}/update/user?instance_id=${this.tab.instance_id}&connection_id=${this.masterTab.connection_id}`);
+        xhr.send();
+        xhr.onload = () => {
+            if (xhr.status !== 200) {
+                console.log(`Error changing connection_id.`);
+                return;
+            }
+            console.log(`Connection_id changed.`);
+            this.tab.connection_id = this.masterTab.connection_id;
+            this.startConnection();
+        };
+        xhr.onerror = () => {
+            console.log('Failed to change connection_id due to network error or server unavailability.');
             if (this.onError) {
                 this.onError();
             }
