@@ -26,6 +26,35 @@ func AddInstance(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "instance_id": i.GetID(), "connection_id": i.GetConnectionID()})
 }
 
+// Update handles HTTP requests for updating the connection_id of an instance.
+func UpdateInstance(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// GET instanceID and connectionID from request body
+	instanceID := r.URL.Query().Get("instance_id")
+	connectionID := r.URL.Query().Get("connection_id")
+
+	// Get the instance
+	instance, ok := s.GetInstanceByID(instanceID)
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "instance not found"})
+		return
+	}
+
+	// Update the connection_id
+	if err := instance.ChangeConnection(connectionID); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "connection_id not found"})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
+}
+
 // Remove handles HTTP requests for removing an instance.
 func RemoveInstance(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

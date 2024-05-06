@@ -16,8 +16,9 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir("./web"))) // Serve static files
 
 	// You can write your own endpoints if you want. Just have a look at the examples and modify them to your needs.
-	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddInstance(ssePubSub, w, r) })                 // Add instance endpoint
-	http.HandleFunc("/remove/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.RemoveInstance(ssePubSub, w, r) })                  // Remove instance endpoint
+	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddInstance(ssePubSub, w, r) })               // Add instance endpoint
+	http.HandleFunc("/update/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.UpdateInstance(ssePubSub, w, r) })         // Update instance endpoint
+	http.HandleFunc("/remove/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.RemoveInstance(ssePubSub, w, r) })         // Remove instance endpoint
 	http.HandleFunc("/add/topic/public/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPublicTopic(ssePubSub, w, r) })   // Add topic endpoint
 	http.HandleFunc("/add/topic/private/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPrivateTopic(ssePubSub, w, r) }) // Add topic endpoint
 	http.HandleFunc("/sub", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Subscribe(ssePubSub, w, r) })                      // Subscribe endpoint
