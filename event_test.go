@@ -72,10 +72,10 @@ func TestSSEPubSubService_OnNewInstance(t *testing.T) {
 	var instance *Instance
 
 	// Event
-	s.OnNewInstance.Listen(func(c *Instance) {
+	s.OnNewInstance.Listen(func(i *Instance) {
 		counter++
-		if instance != c {
-			t.Errorf("Expected %v, got %v", instance, c)
+		if instance != i {
+			t.Errorf("Expected %v, got %v", instance, i)
 		}
 	})
 
@@ -168,10 +168,10 @@ func TestSSEPubSubService_OnRemoveInstance(t *testing.T) {
 	var instance *Instance
 
 	// Event
-	s.OnRemoveInstance.Listen(func(c *Instance) {
+	s.OnRemoveInstance.Listen(func(i *Instance) {
 		counter++
-		if instance != c {
-			t.Errorf("Expected %v, got %v", instance, c)
+		if instance != i {
+			t.Errorf("Expected %v, got %v", instance, i)
 		}
 	})
 
@@ -1162,10 +1162,10 @@ func TestGroup_OnNewInstance(t *testing.T) {
 	counter := 0
 
 	// Event
-	g.OnNewInstance.Listen(func(cl *Instance) {
+	g.OnNewInstance.Listen(func(in *Instance) {
 		counter++
-		if c != cl {
-			t.Errorf("Expected %v, got %v", c, cl)
+		if c != in {
+			t.Errorf("Expected %v, got %v", c, in)
 		}
 	})
 
@@ -1236,10 +1236,10 @@ func TestGroup_OnRemoveInstance(t *testing.T) {
 	counter := 0
 
 	// Event
-	g.OnRemoveInstance.Listen(func(cl *Instance) {
+	g.OnRemoveInstance.Listen(func(in *Instance) {
 		counter++
-		if c != cl {
-			t.Errorf("Expected %v, got %v", c, cl)
+		if c != in {
+			t.Errorf("Expected %v, got %v", c, in)
 		}
 	})
 
@@ -1339,21 +1339,21 @@ func TestTopic_OnNewInstance(t *testing.T) {
 	// Create a new public topic.
 	topic := s.NewPublicTopic()
 
-	var c *Instance
+	var i *Instance
 
 	// Counter of how many times the event was triggered.
 	counter := 0
 
 	// Event
-	id := topic.OnNewInstance.Listen(func(cl *Instance) {
+	id := topic.OnNewInstance.Listen(func(in *Instance) {
 		counter++
-		if c != cl {
-			t.Errorf("Expected %v, got %v", c, cl)
+		if i != in {
+			t.Errorf("Expected %v, got %v", i, in)
 		}
 	})
 
 	// Create a new instance.
-	c = s.NewInstance()
+	i = s.NewInstance()
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1371,16 +1371,16 @@ func TestTopic_OnNewInstance(t *testing.T) {
 	topic = group.NewTopic()
 
 	// Event
-	topic.OnNewInstance.Listen(func(cl *Instance) {
+	topic.OnNewInstance.Listen(func(in *Instance) {
 		counter++
-		if c != cl {
-			t.Errorf("Expected %v, got %v", c, cl)
+		if i != in {
+			t.Errorf("Expected %v, got %v", i, in)
 		}
 	})
 
 	// Create a new instance.
-	c = s.NewInstance()
-	group.AddInstance(c)
+	i = s.NewInstance()
+	group.AddInstance(i)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -1408,10 +1408,10 @@ func TestTopic_OnNewSubOfInstance(t *testing.T) {
 	counter := 0
 
 	// Event
-	id := topic.OnNewSubOfInstance.Listen(func(cl *Instance) {
+	id := topic.OnNewSubOfInstance.Listen(func(in *Instance) {
 		counter++
-		if c != cl {
-			t.Errorf("Expected %v, got %v", c, cl)
+		if c != in {
+			t.Errorf("Expected %v, got %v", c, in)
 		}
 	})
 
@@ -1434,10 +1434,10 @@ func TestTopic_OnNewSubOfInstance(t *testing.T) {
 	topic = c.NewPrivateTopic()
 
 	// Event
-	topic.OnNewSubOfInstance.Listen(func(cl *Instance) {
+	topic.OnNewSubOfInstance.Listen(func(in *Instance) {
 		counter++
-		if c != cl {
-			t.Errorf("Expected %v, got %v", c, cl)
+		if c != in {
+			t.Errorf("Expected %v, got %v", c, in)
 		}
 	})
 
@@ -1462,10 +1462,10 @@ func TestTopic_OnNewSubOfInstance(t *testing.T) {
 	group.AddInstance(c)
 
 	// Event
-	topic.OnNewSubOfInstance.Listen(func(cl *Instance) {
+	topic.OnNewSubOfInstance.Listen(func(in *Instance) {
 		counter++
-		if c != cl {
-			t.Errorf("Expected %v, got %v", c, cl)
+		if c != in {
+			t.Errorf("Expected %v, got %v", c, in)
 		}
 	})
 
@@ -1538,10 +1538,10 @@ func TestTopic_OnRemoveInstance(t *testing.T) {
 
 	helperfunc := func(top *Topic) string {
 		// Event
-		return top.OnRemoveInstance.Listen(func(cl *Instance) {
+		return top.OnRemoveInstance.Listen(func(in *Instance) {
 			counter++
-			if c != cl {
-				t.Errorf("Expected %v, got %v", c, cl)
+			if c != in {
+				t.Errorf("Expected %v, got %v", c, in)
 			}
 		})
 	}
@@ -1652,10 +1652,10 @@ func TestTopic_OnUnsubOfInstance(t *testing.T) {
 
 	helperfunc := func(top *Topic) string {
 		// Event
-		return top.OnUnsubOfInstance.Listen(func(cl *Instance) {
+		return top.OnUnsubOfInstance.Listen(func(in *Instance) {
 			counter++
-			if c != cl {
-				t.Errorf("Expected %v, got %v", c, cl)
+			if c != in {
+				t.Errorf("Expected %v, got %v", c, in)
 			}
 		})
 	}

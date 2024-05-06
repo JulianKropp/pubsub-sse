@@ -201,30 +201,30 @@ func (g *Group) RemoveTopic(t *Topic) {
 // 0. Check if instance already exists in the group
 // 1. Add instance to the group
 // 2. Add group to instance
-func (g *Group) AddInstance(c *Instance) {
+func (g *Group) AddInstance(i *Instance) {
 	// Check if instance already exists in the group
-	if _, ok := g.GetInstanceByID(c.GetID()); ok {
+	if _, ok := g.GetInstanceByID(i.GetID()); ok {
 		log.Errorf("Instance already exists in group")
 		return
 	}
 
 	// Add instance to the group
 	g.lock.Lock()
-	g.instances[c.GetID()] = c
+	g.instances[i.GetID()] = i
 	g.lock.Unlock()
 
 	// Add group to instance. This will inform the instance of the new topics
-	c.addGroup(g)
+	i.addGroup(g)
 
 	// Inform instance about the new topic
-	if err := c.sendTopicList(); err != nil {
-		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", c.id, err)
+	if err := i.sendTopicList(); err != nil {
+		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", i.id, err)
 	}
 
 	// Event:
-	g.OnNewInstance.Emit(c)
+	g.OnNewInstance.Emit(i)
 	for _, t := range g.GetTopics() {
-		t.OnNewInstance.Emit(c)
+		t.OnNewInstance.Emit(i)
 	}
 }
 
@@ -234,36 +234,36 @@ func (g *Group) AddInstance(c *Instance) {
 // 2. Remove instance from the group
 // 3. Remove group from instance
 // 4. Inform instance about the removed topic
-func (g *Group) RemoveInstance(c *Instance) {
+func (g *Group) RemoveInstance(i *Instance) {
 	// Check if instance exists in the group
-	if _, ok := g.GetInstanceByID(c.GetID()); !ok {
+	if _, ok := g.GetInstanceByID(i.GetID()); !ok {
 		log.Errorf("Instance does not exist in group")
 		return
 	}
 
 	// Unsubscribe instance from all group topics
 	for _, t := range g.GetTopics() {
-		if err := c.Unsub(t); err != nil {
-			log.Warnf("[C:%s]: Warning unsuscribing instance from topic: %s", c.id, err)
+		if err := i.Unsub(t); err != nil {
+			log.Warnf("[C:%s]: Warning unsuscribing instance from topic: %s", i.id, err)
 		}
 
 		// Event:
-		t.OnRemoveInstance.Emit(c)
+		t.OnRemoveInstance.Emit(i)
 	}
 
 	// Remove instance from the group
 	g.lock.Lock()
-	delete(g.instances, c.GetID())
+	delete(g.instances, i.GetID())
 	g.lock.Unlock()
 
 	// Remove group from instance
-	c.removeGroup(g)
+	i.removeGroup(g)
 
 	// Inform instance about the removed topic
-	if err := c.sendTopicList(); err != nil {
-		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", c.id, err)
+	if err := i.sendTopicList(); err != nil {
+		log.Warnf("[C:%s]: Warning sending new topic to instance: %s", i.id, err)
 	}
 
 	// Event:
-	g.OnRemoveInstance.Emit(c)
+	g.OnRemoveInstance.Emit(i)
 }

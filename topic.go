@@ -64,25 +64,25 @@ func (t *Topic) GetType() string {
 }
 
 // Add a instance to the topic
-func (t *Topic) addInstance(c *Instance) {
+func (t *Topic) addInstance(i *Instance) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	t.instances[c.id] = c
+	t.instances[i.id] = i
 
 	// Events
-	t.OnNewSubOfInstance.Emit(c)
+	t.OnNewSubOfInstance.Emit(i)
 }
 
 // Remove a instance from the topic
-func (t *Topic) removeInstance(c *Instance) {
+func (t *Topic) removeInstance(i *Instance) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	delete(t.instances, c.id)
+	delete(t.instances, i.id)
 
 	// Events
-	t.OnUnsubOfInstance.Emit(c)
+	t.OnUnsubOfInstance.Emit(i)
 }
 
 // Get all instances in the topic
@@ -99,11 +99,11 @@ func (t *Topic) GetInstances() map[string]*Instance {
 }
 
 // Check if a instance is subscribed to the topic
-func (t *Topic) IsSubscribed(c *Instance) bool {
+func (t *Topic) IsSubscribed(i *Instance) bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	_, ok := t.instances[c.id]
+	_, ok := t.instances[i.id]
 	return ok
 }
 
