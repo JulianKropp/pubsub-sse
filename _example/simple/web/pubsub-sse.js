@@ -3,6 +3,7 @@
 // - [ ] What if connection_id changes or there are multiple connection_id?
 // - [ ] if error connecting to broadcast maybe wrong connection_id becomming master. Then there are two masters.
 
+
 class Topic {
     constructor(id, type) {
         this.id = id;
@@ -41,11 +42,11 @@ class Tab {
 class PubSubSSE {
     constructor(url = `http://localhost`) {
         this.url = url;
-        this.status = `disconnected`; // connecting, connected or disconnected
+        this.status = `disconnected`; // connecting, connected, or disconnected
         this.connection_type = `sse`; // sse or broadcastchannel
         this.channel = null;
         this.evtSource = null;
-        this.topics = {}; // Stores Topic objects
+        this.topics = new Map(); // Stores Topic objects
 
         this.onConnected = null;
         this.onDisconnected = null;
@@ -53,16 +54,15 @@ class PubSubSSE {
         this.onNewTopic = null;
         this.onRemovedTopic = null;
 
-
-        let thistab = new Tab()
+        let thistab = new Tab();
         this.tab = thistab;
-        this.tabs = [];
-        this.tabs[this.tab.id] = thistab;
+        this.tabs = new Map(); // Stores Tab objects
+        this.tabs.set(this.tab.id, thistab);
         this.masterTab = null;
 
         this.tabChannel = new BroadcastChannel('tab_communication');
 
-        this.unknownInstances = {};
+        this.unknownInstances = new Map();
         this.removeInstanceAfterXAttempts = 3;
 
         // Timeout and intervals
@@ -91,8 +91,8 @@ class PubSubSSE {
     broadcast(type, tabID) {
         let data = { tabID: null, instance_id: null, connection_id: null };
 
-        // find tab
-        const tab = this.tabs[tabID];
+        // Find tab
+        const tab = this.tabs.get(tabID);
         if (tab) {
             data.tabID = tab.id;
             data.instance_id = this.tab.instance_id;
@@ -112,16 +112,16 @@ class PubSubSSE {
         }
 
         // Create tab if it doesn't exist
-        if (!this.tabs[from]) {
-            this.tabs[from] = new Tab(from);
+        if (!this.tabs.has(from)) {
+            this.tabs.set(from, new Tab(from));
         }
-        if (!this.tabs[data.tabID]) {
-            this.tabs[data.tabID] = new Tab(data.tabID);
+        if (!this.tabs.has(data.tabID)) {
+            this.tabs.set(data.tabID, new Tab(data.tabID));
         }
 
         // Get data tab
-        const dataTab = this.tabs[data.tabID];
-        if (dataTab === this.masterTab && data.connection_id != dataTab.connection_id) {
+        const dataTab = this.tabs.get(data.tabID);
+        if (dataTab === this.masterTab && data.connection_id !== dataTab.connection_id) {
             console.log(`Master tab connection_id changed. Reconnecting.`);
             this.changeConnection_id();
         }
@@ -135,7 +135,7 @@ class PubSubSSE {
                 break;
             case 'ack':
             case 'ping':
-                this.tabs[from].resetTimer();
+                this.tabs.get(from).resetTimer();
                 break;
             case 'master':
                 if (this.isMaster() && data.tabID > this.tab.id) {
@@ -149,31 +149,31 @@ class PubSubSSE {
 
     checkTabs() {
         const now = Date.now();
-        Object.keys(this.tabs).forEach(tabId => {
-            if (this.tab.id != tabId) {
-                if (now - this.tabs[tabId].lastMessage > this.timeout) {
+        for (let [tabId, tab] of this.tabs.entries()) {
+            if (this.tab.id !== tabId) {
+                if (now - tab.lastMessage > this.timeout) {
                     console.log(`Removing inactive tab ${tabId}`);
 
                     if (this.masterTab) {
-                        if (this.isMaster() || this.tabs[tabId].id === this.masterTab.id) {
-                            this.removeInstance(this.tabs[tabId].instance_id);
+                        if (this.isMaster() || tab.id === this.masterTab.id) {
+                            this.removeInstance(tab.instance_id);
                         }
                     }
-                    delete this.tabs[tabId];
+                    this.tabs.delete(tabId);
                     this.electMaster();
                 }
             }
-        });
+        }
     }
 
     electMaster() {
         // Ensure current tab is in the list
-        if (!this.tabs[this.tab.id]) {
-            this.tabs[this.tab.id] = this.tab;
+        if (!this.tabs.has(this.tab.id)) {
+            this.tabs.set(this.tab.id, this.tab);
         }
 
         // Find the tab with the lowest ID to elect as master
-        const lowestId = Math.min(this.tab.id, ...Object.keys(this.tabs).map(key => parseFloat(key)));
+        const lowestId = Math.min(this.tab.id, ...Array.from(this.tabs.keys()).map(Number));
         if (lowestId === this.tab.id) {
             this.broadcast('master', this.tab.id);
             this.setMaster(this.tab.id);
@@ -191,7 +191,7 @@ class PubSubSSE {
     setMaster(masterID) {
         const wasMaster = this.isMaster();
         if (!this.masterTab || this.masterTab.id !== masterID) {
-            this.masterTab = this.tabs[masterID];
+            this.masterTab = this.tabs.get(masterID);
             console.log(`Master tab is now ${masterID}`);
         }
 
@@ -213,7 +213,6 @@ class PubSubSSE {
             this.startConnection();
         }
     }
-
 
     setConnectionType() {
         if (this.isMaster()) {
@@ -270,7 +269,7 @@ class PubSubSSE {
     registerNewInstance() {
         const xhr = new XMLHttpRequest();
         if (this.masterTab.connection_id) {
-            // This will register a new instance and will send all the data to the connection_id which is normaly anouther tab (instance)
+            // This will register a new instance and will send all the data to the connection_id which is normally another tab (instance)
             // If the connection_id is not valid, the server will return a new connection_id
             xhr.open(`GET`, `${this.url}/add/user?connection_id=${this.masterTab.connection_id}`);
         } else {
@@ -317,11 +316,10 @@ class PubSubSSE {
                 }
             };
         }
-
     }
 
     startConnection() {
-        // close existing connection
+        // Close existing connection
         if (this.evtSource) {
             this.evtSource.close();
         }
@@ -349,69 +347,68 @@ class PubSubSSE {
 
     // Open a new SSE connection
     connectWithSSE() {
-        // close existing connection
+        // Close existing connection
         if (this.evtSource) {
             this.evtSource.close();
         }
 
         this.evtSource = new EventSource(`${this.url}/event?instance_id=${this.tab.instance_id}`);
 
-        // on open event
+        // On open event
         this.evtSource.onopen = () => {
             console.log(`Connection to server opened.`);
             if (this.onConnected) {
                 this.onConnected();
             }
 
-            // send onopen event to the broadcastchannel
+            // Send onopen event to the broadcastchannel
             this.channel.postMessage({ type: `event_open` });
         };
 
-        // on message event
+        // On message event
         this.evtSource.onmessage = (e) => {
             const data = JSON.parse(e.data);
 
             console.log(`Received sse message: ` + e.data);
 
             // Publish data in channel
-            this.channel.postMessage({ type: `data`, data: data });
+            this.channel.postMessage({ type: `data`, data });
 
             // Handle the data
             this.handleData(data);
         };
 
-        // on error event
+        // On error event
         this.evtSource.onerror = () => {
             console.log(`EventSource failed.`);
             if (this.onError) {
                 this.onError();
             }
 
-            // send onerror event to the broadcastchannel
+            // Send onerror event to the broadcastchannel
             this.channel.postMessage({ type: `event_error` });
 
             // Reconnect
             this.open();
         };
 
-        // on close event
+        // On close event
         this.evtSource.onclose = () => {
             console.log(`Connection to server closed.`);
             if (this.onDisconnected) {
                 this.onDisconnected();
             }
 
-            // send onclose event to the broadcastchannel
+            // Send onclose event to the broadcastchannel
             this.channel.postMessage({ type: `event_close` });
-        }
+        };
     }
 
     // Listen for messages on the BroadcastChannel
     connectWithBroadcastChannel() {
-        // on message event
+        // On message event
         this.channel.onmessage = (event) => {
-
-            // on message event
+            // On message event
             if (event.data.type === `data`) {
                 const data = event.data.data;
 
@@ -421,7 +418,7 @@ class PubSubSSE {
                 this.handleData(data);
             }
 
-            // on open event
+            // On open event
             if (event.data.type === `event_open`) {
                 console.log(`Connection to server opened.`);
                 if (this.onConnected) {
@@ -429,7 +426,7 @@ class PubSubSSE {
                 }
             }
 
-            // on error event
+            // On error event
             if (event.data.type === `event_error`) {
                 console.log(`EventSource failed.`);
                 if (this.onError) {
@@ -437,14 +434,14 @@ class PubSubSSE {
                 }
             }
 
-            // on close event
+            // On close event
             if (event.data.type === `event_close`) {
                 console.log(`Connection to server closed.`);
                 if (this.onDisconnected) {
                     this.onDisconnected();
                 }
             }
-        }
+        };
     }
 
     handleData(data) {
@@ -458,32 +455,26 @@ class PubSubSSE {
             return;
         }
 
-
         // If instance doesn't exist 10 times, remove it
         if (this.isMaster()) {
             for (const instance of instances) {
                 // Check if the instance exists in tabs
-                const instanceExists = this.tabs.find(tab => tab.instance_id === instance.id);
+                const instanceExists = Array.from(this.tabs.values()).some(tab => tab.instance_id === instance.id);
 
                 // If instance not in tabs.instance_id, add instance id to unknownInstances and increment counter
                 if (!instanceExists) {
                     console.log(`Instance not found: ` + instance.id);
-                    if (!this.unknownInstances[instance.id]) {
-                        this.unknownInstances[instance.id] = 0;
-                    }
-                    this.unknownInstances[instance.id]++;
+                    const attempts = this.unknownInstances.get(instance.id) || 0;
+                    this.unknownInstances.set(instance.id, attempts + 1);
 
                     // If counter > removeInstanceAfterXAttempts, remove instance
-                    if (this.unknownInstances[instance.id] > this.removeInstanceAfterXAttempts) {
+                    if (attempts + 1 > this.removeInstanceAfterXAttempts) {
                         this.removeInstance(instance.id);
-
-                        // Reset the counter for this instance
-                        this.unknownInstances[instance.id] = 0;
+                        this.unknownInstances.set(instance.id, 0);
                     }
                 }
             }
         }
-
 
         this.handleSysMessages(instanceData.sys);
         this.handleUpdateMessages(instanceData.updates);
@@ -508,12 +499,12 @@ class PubSubSSE {
 
                 // Remove topics that are no longer in the list
                 removedTopicsList.forEach(topicId => {
-                    const topic = this.topics[topicId];
+                    const topic = this.topics.get(topicId);
                     if (topic) {
                         if (topic.subscribed) {
                             topic.onUnsubscribed?.(); // Call the onUnsubscribed event if defined
                         }
-                        delete this.topics[topicId];
+                        this.topics.delete(topicId);
                         this.onRemovedTopic?.(topic); // Notify client of topic removal
                     }
                 });
@@ -525,7 +516,7 @@ class PubSubSSE {
                 });
             } else if (type === `unsubscribed`) {
                 sysData.list.forEach(topicInfo => {
-                    const topic = this.topics[topicInfo.ID];
+                    const topic = this.topics.get(topicInfo.ID);
                     if (topic) {
                         topic.onUnsubscribed?.(); // Call the onUnsubscribed event if defined
                         topic.subscribed = false; // Mark as unsubscribed
@@ -540,7 +531,7 @@ class PubSubSSE {
 
         // Handle updates for subscribed topics
         updateData.forEach(update => {
-            const topic = this.topics[update.topic];
+            const topic = this.topics.get(update.topic);
             if (topic) {
                 topic.onUpdate?.(update.data); // Call the onUpdate event if defined
             }
@@ -549,15 +540,14 @@ class PubSubSSE {
 
     ensureTopic(ID, type) {
         let topic; // Define a local variable for the topic
-        if (!this.topics[ID]) {
+        if (!this.topics.has(ID)) {
             console.log(`New topic: ` + ID);
             topic = new Topic(ID, type); // Assign the new Topic to the local variable
-            this.topics[ID] = topic; // Store the Topic in the topics dictionary
-            this.onNewTopic?.(topic); // Notify client of new topic using the local variable
+            this.topics.set(ID, topic); // Store the Topic in the topics Map
+            this.onNewTopic(topic); // Notify client of new topic using the local variable
         } else {
-            topic = this.topics[ID]; // If the topic already exists, assign it to the local variable
+            topic = this.topics.get(ID); // If the topic already exists, assign it to the local variable
         }
         return topic;
     }
-
 }
