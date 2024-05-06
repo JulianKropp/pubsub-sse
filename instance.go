@@ -14,6 +14,8 @@ type Instance struct {
 
 	id string
 
+	sSEPubSubService *SSEPubSubService
+
 	connection *Connection
 
 	privateTopics map[string]*Topic
@@ -44,6 +46,14 @@ func (i *Instance) GetID() string {
 	return i.id
 }
 
+// getSSEPubSubService
+func (i *Instance) getSSEPubSubService() *SSEPubSubService {
+	i.lock.Lock()
+	defer i.lock.Unlock()
+
+	return i.sSEPubSubService
+}
+
 // Get connection id
 func (i *Instance) GetConnectionID() string {
 	return i.getConnection().GetID()
@@ -61,15 +71,40 @@ func (i *Instance) GetStatus() Status {
 	return i.getConnection().GetStatus()
 }
 
+// Change connection
+func (i *Instance) ChangeConnection(c_id string) error {
+	// Get connection by ID
+	c, ok := i.getSSEPubSubService().getConnectionByID(c_id)
+	if !ok {
+		return fmt.Errorf("[I:%s]: connection %s does not exist", i.GetID(), c_id)
+	}
+
+	// Remove instance from the old connection
+	i.getConnection().removeInstance(i)
+
+	// Change connection
+	c.addInstance(i)
+	i.lock.Lock()
+	i.connection = c
+	i.lock.Unlock()
+
+	return nil
+}
 
 // Get public topics
 func (i *Instance) GetPublicTopics() map[string]*Topic {
-	return i.getConnection().getSSEPubSubService().GetPublicTopics()
+	i.lock.Lock()
+	defer i.lock.Unlock()
+
+	return i.sSEPubSubService.GetPublicTopics()
 }
 
 // Get public topic by id
 func (i *Instance) GetPublicTopicByID(id string) (*Topic, bool) {
-	return i.getConnection().getSSEPubSubService().GetPublicTopicByID(id)
+	i.lock.Lock()
+	defer i.lock.Unlock()
+
+	return i.sSEPubSubService.GetPublicTopicByID(id)
 }
 
 // New private topic

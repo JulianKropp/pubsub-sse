@@ -86,6 +86,8 @@ func (c *Connection) newInstance() *Instance {
 
 		id: "I-" + uuid.New().String(),
 
+		sSEPubSubService: c.getSSEPubSubService(),
+
 		connection: c,
 
 		privateTopics: make(map[string]*Topic),
@@ -115,6 +117,15 @@ func (c *Connection) newInstance() *Instance {
 	c.lock.Unlock()
 
 	return in
+}
+
+// Add instance
+func (c *Connection) addInstance(i *Instance) {
+	// Add instance to the connection
+	id := i.GetID()
+	c.lock.Lock()
+	c.instances[id] = i
+	c.lock.Unlock()
 }
 
 // Remove instance

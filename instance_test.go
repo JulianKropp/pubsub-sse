@@ -32,6 +32,17 @@ func TestInstance_getConnection(t *testing.T) {
 	}
 }
 
+// ChangeConnection
+func TestInstance_ChangeConnection(t *testing.T) {
+	ssePubSub := NewSSEPubSubService()
+	c := ssePubSub.NewInstance()
+	c2 := ssePubSub.NewInstance()
+	c.ChangeConnection(c2.connection.GetID())
+	if c.connection != c2.connection {
+		t.Errorf("Instance.connection != c2.connection")
+	}
+}
+
 // TestInstance_GetStatus tests Instance.GetStatus()
 func TestInstance_GetStatus(t *testing.T) {
 	ssePubSub := NewSSEPubSubService()
