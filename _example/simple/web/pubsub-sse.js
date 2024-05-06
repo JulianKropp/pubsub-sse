@@ -1,8 +1,7 @@
 // TODO:
 // - [ ] What if the main tab sse connection fails?
-// - [ ] What if second tab closes? How to handle the instance which should not receve any messages anymore, but the main tab still does for the second tab?
 // - [ ] What if connection_id changes or there are multiple connection_id?
-// - [ ] Merge process if there are multiple masters
+// - [ ] if error connecting to broadcast maybe wrong connection_id becomming master. Then there are two masters.
 
 class Topic {
     constructor(id, type) {
@@ -63,10 +62,13 @@ class PubSubSSE {
 
         this.tabChannel = new BroadcastChannel('tab_communication');
 
+        this.unknownInstances = {};
+        this.removeInstanceAfterXAttempts = 3;
+
         // Timeout and intervals
         this.pingInterval = 100;
-        this.checkTabsInterval = 100;
-        this.timeout = 300;
+        this.checkTabsInterval = 500;
+        this.timeout = 1000;
 
         this.tabChannel.onmessage = this.handleMessage.bind(this);
 
@@ -93,7 +95,7 @@ class PubSubSSE {
         const tab = this.tabs[tabID];
         if (tab) {
             data.tabID = tab.id;
-            data.instance_id =  this.tab.instance_id;
+            data.instance_id = this.tab.instance_id;
             data.connection_id = this.tab.connection_id;
         } else {
             console.log(`Tab ${tabID} not found`);
@@ -151,8 +153,11 @@ class PubSubSSE {
             if (this.tab.id != tabId) {
                 if (now - this.tabs[tabId].lastMessage > this.timeout) {
                     console.log(`Removing inactive tab ${tabId}`);
-                    if(this.isMaster() || this.tabs[tabId].id === this.masterTab.id) {
-                        this.removeInstance(this.tabs[tabId].instance_id);
+
+                    if (this.masterTab) {
+                        if (this.isMaster() || this.tabs[tabId].id === this.masterTab.id) {
+                            this.removeInstance(this.tabs[tabId].instance_id);
+                        }
                     }
                     delete this.tabs[tabId];
                     this.electMaster();
@@ -162,13 +167,19 @@ class PubSubSSE {
     }
 
     electMaster() {
-        if (Object.keys(this.tabs).length === 0 || !this.tabs[this.tab.id]) {
-            this.tabs[this.tab.id] = this.tab; // Ensure current tab is in list
+        // Ensure current tab is in the list
+        if (!this.tabs[this.tab.id]) {
+            this.tabs[this.tab.id] = this.tab;
         }
+
+        // Find the tab with the lowest ID to elect as master
         const lowestId = Math.min(this.tab.id, ...Object.keys(this.tabs).map(key => parseFloat(key)));
         if (lowestId === this.tab.id) {
             this.broadcast('master', this.tab.id);
             this.setMaster(this.tab.id);
+        } else {
+            // Set the master tab if another tab is elected master
+            this.setMaster(lowestId);
         }
     }
 
@@ -178,15 +189,15 @@ class PubSubSSE {
     }
 
     setMaster(masterID) {
-        const oldIsMaster = this.isMaster();
+        const wasMaster = this.isMaster();
         if (!this.masterTab || this.masterTab.id !== masterID) {
             this.masterTab = this.tabs[masterID];
+            console.log(`Master tab is now ${masterID}`);
+        }
 
-            console.log(`Master set to tab ID ${JSON.stringify(masterID)}`);
-
-            if (oldIsMaster !== this.isMaster()) {
-                this.updateStatus();
-            }
+        const isNowMaster = this.isMaster();
+        if (wasMaster !== isNowMaster) {
+            this.updateStatus();
         }
     }
 
@@ -231,21 +242,29 @@ class PubSubSSE {
     }
 
     open() {
-        this.status = `connecting`;
+        if (this.status === 'connecting') {
+            return;
+        }
+        this.status = 'connecting';
         this.tab.instance_id = null;
         this.tab.connection_id = null;
 
-        // wait until this.masterTab isnt null
-        if (!this.masterTab) {
-            setTimeout(() => {
-                console.log(`Waiting for master tab: ${JSON.stringify(this.masterTab)}`);
-                this.open();
-            }, 100);
-            return;
-        } else {
-            this.setConnectionType();
-            this.registerNewInstance();
-        }
+        const waitForMaster = () => {
+            // Wait until this.masterTab isn't null
+            if (!this.masterTab) {
+                setTimeout(() => {
+                    console.log(`Waiting for master tab: ${JSON.stringify(this.masterTab)}`);
+                    waitForMaster();
+                }, 100);
+                return;
+            } else {
+                this.setConnectionType();
+                this.registerNewInstance();
+            }
+        };
+
+        // Call the waitForMaster function to start waiting
+        waitForMaster();
     }
 
     registerNewInstance() {
@@ -278,25 +297,27 @@ class PubSubSSE {
     }
 
     changeConnection_id() {
-        this.tab.connection_id = null;
-        const xhr = new XMLHttpRequest();
-        xhr.open(`GET`, `${this.url}/update/user?instance_id=${this.tab.instance_id}&connection_id=${this.masterTab.connection_id}`);
-        xhr.send();
-        xhr.onload = () => {
-            if (xhr.status !== 200) {
-                console.log(`Error changing connection_id.`);
-                return;
-            }
-            console.log(`Connection_id changed.`);
-            this.tab.connection_id = this.masterTab.connection_id;
-            this.startConnection();
-        };
-        xhr.onerror = () => {
-            console.log('Failed to change connection_id due to network error or server unavailability.');
-            if (this.onError) {
-                this.onError();
-            }
-        };
+        if (this.tab.instance_id && this.masterTab.connection_id) {
+            const xhr = new XMLHttpRequest();
+            xhr.open(`GET`, `${this.url}/update/user?instance_id=${this.tab.instance_id}&connection_id=${this.masterTab.connection_id}`);
+            xhr.send();
+            xhr.onload = () => {
+                if (xhr.status !== 200) {
+                    console.log(`Error changing connection_id.`);
+                    return;
+                }
+                console.log(`Connection_id changed.`);
+                this.tab.connection_id = this.masterTab.connection_id;
+                this.startConnection();
+            };
+            xhr.onerror = () => {
+                console.log('Failed to change connection_id due to network error or server unavailability.');
+                if (this.onError) {
+                    this.onError();
+                }
+            };
+        }
+
     }
 
     startConnection() {
@@ -319,12 +340,10 @@ class PubSubSSE {
         if (this.connection_type === `sse`) {
             this.connectWithSSE(); // Open a new SSE connection
         } else if (this.connection_type === `broadcastchannel`) {
-            if (this.masterTab.connection_id === this.tab.connection_id) {
-                this.connectWithBroadcastChannel(); // Listen for messages on the BroadcastChannel
-            } else {
-                // Fall back to SSE if the connection_id is not valid
-                this.connectWithSSE();
+            if (this.masterTab.connection_id !== this.tab.connection_id) {
+                this.changeConnection_id();
             }
+            this.connectWithBroadcastChannel(); // Listen for messages on the BroadcastChannel
         }
     }
 
@@ -370,6 +389,9 @@ class PubSubSSE {
 
             // send onerror event to the broadcastchannel
             this.channel.postMessage({ type: `event_error` });
+
+            // Reconnect
+            this.open();
         };
 
         // on close event
@@ -426,12 +448,42 @@ class PubSubSSE {
     }
 
     handleData(data) {
+        // Parse data (assuming it's correctly formatted)
+        const instances = data.instances;
+
         // Get data with this instance_id
         // Example data: {`instances`:[{`id`:`I-ba6b975b-4b18-40d1-88c5-ee947f1888d9`,`data`:{`sys`:null,`updates`:[{`topic`:`T-bc57baf3-4c76-4ae9-a8dd-0f1726f7ea47`,`data`:`DATAAAAAA`}]}}]}
-        const instanceData = data.instances.find(instance => instance.id ===  this.tab.instance_id);
+        const instanceData = instances.find(instance => instance.id === this.tab.instance_id);
         if (!instanceData) {
             return;
         }
+
+
+        // If instance doesn't exist 10 times, remove it
+        if (this.isMaster()) {
+            for (const instance of instances) {
+                // Check if the instance exists in tabs
+                const instanceExists = this.tabs.find(tab => tab.instance_id === instance.id);
+
+                // If instance not in tabs.instance_id, add instance id to unknownInstances and increment counter
+                if (!instanceExists) {
+                    console.log(`Instance not found: ` + instance.id);
+                    if (!this.unknownInstances[instance.id]) {
+                        this.unknownInstances[instance.id] = 0;
+                    }
+                    this.unknownInstances[instance.id]++;
+
+                    // If counter > removeInstanceAfterXAttempts, remove instance
+                    if (this.unknownInstances[instance.id] > this.removeInstanceAfterXAttempts) {
+                        this.removeInstance(instance.id);
+
+                        // Reset the counter for this instance
+                        this.unknownInstances[instance.id] = 0;
+                    }
+                }
+            }
+        }
+
 
         this.handleSysMessages(instanceData.sys);
         this.handleUpdateMessages(instanceData.updates);
