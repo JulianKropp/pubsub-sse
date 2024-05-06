@@ -11,8 +11,8 @@ class TabManager {
 
         // Timeout and intervals
         this.pingInterval = 100;
-        this.checkTabsInterval = 100;
-        this.timeout = 300;
+        this.checkTabsInterval = 500;
+        this.timeout = 1000;
 
         this.channel.onmessage = this.handleMessage.bind(this);
 
