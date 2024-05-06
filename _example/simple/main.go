@@ -17,6 +17,7 @@ func main() {
 
 	// You can write your own endpoints if you want. Just have a look at the examples and modify them to your needs.
 	http.HandleFunc("/add/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddInstance(ssePubSub, w, r) })                 // Add instance endpoint
+	http.HandleFunc("/remove/user", func(w http.ResponseWriter, r *http.Request) { pubsubsse.RemoveInstance(ssePubSub, w, r) })                  // Remove instance endpoint
 	http.HandleFunc("/add/topic/public/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPublicTopic(ssePubSub, w, r) })   // Add topic endpoint
 	http.HandleFunc("/add/topic/private/", func(w http.ResponseWriter, r *http.Request) { pubsubsse.AddPrivateTopic(ssePubSub, w, r) }) // Add topic endpoint
 	http.HandleFunc("/sub", func(w http.ResponseWriter, r *http.Request) { pubsubsse.Subscribe(ssePubSub, w, r) })                      // Subscribe endpoint
@@ -131,6 +132,9 @@ func main() {
 		for {
 			pubTopic.Pub("DATAAAAAA")
 			time.Sleep(5 * time.Second)
+
+			instances := ssePubSub.GetInstances()
+			log.Infof("[sys]: Instances: %d", len(instances))
 		}
 	}()
 

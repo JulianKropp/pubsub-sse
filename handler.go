@@ -13,17 +13,40 @@ func AddInstance(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Get connection_id
-	var c *Instance
+	var i *Instance
 	connectionID := r.URL.Query().Get("connection_id")
 	if connectionID == "" {
-		c = s.NewInstance()
+		i = s.NewInstance()
 	} else {
 		// Create a new instance
-		c = s.NewInstance(connectionID)
+		i = s.NewInstance(connectionID)
 	}
 
 	// Send the instance ID
-	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "instance_id": c.GetID(), "connection_id": c.connection.id})
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true", "instance_id": i.GetID(), "connection_id": i.GetConnectionID()})
+}
+
+// Remove handles HTTP requests for removing an instance.
+func RemoveInstance(s *SSEPubSubService, w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// GET instanceID from request body
+	instanceID := r.URL.Query().Get("instance_id")
+
+	// Get the instance
+	instance, ok := s.GetInstanceByID(instanceID)
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(map[string]string{"ok": "false", "error": "instance not found"})
+		return
+	}
+
+	// Remove the instance
+	s.RemoveInstance(instance)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
 }
 
 // AddPublicTopic handles HTTP requests for adding a new public topic.
