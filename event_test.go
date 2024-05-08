@@ -1757,3 +1757,62 @@ func TestTopic_OnUnsubOfInstance(t *testing.T) {
 		t.Errorf("Expected 7, got %d", counter)
 	}
 }
+
+// Test multiple instances with the same connection_id
+// - Create 2 instances
+// - Create a new public topic
+// - Subscribe to the topic with both instances
+// - Publish to the topic
+// - Check if both instances received the message over the same connection
+func TestMultipleInstancesWithSameConnectionID(t *testing.T) {
+	// Create a new SSEPubSubService.
+	s := NewSSEPubSubService()
+
+	// Create a new instance.
+	c1 := s.NewInstance()
+
+	// Create a new instance.
+	c2 := s.NewInstance(c1.GetConnectionID())
+
+	// Create a new public topic.
+	topic := s.NewPublicTopic()
+
+	// Subscribe to the topic with both instances.
+	c1.Sub(topic)
+	c2.Sub(topic)
+
+	// start http server
+	startEventServer(s, t, 8089)
+
+	// Connect to the server.
+	connected := make(chan bool)
+	done := make(chan bool)
+	data := []connectionData{}
+	httpToEvent(t, c1, 8089, connected, done, &data)
+
+	// Wait for the connection to be established.
+	<-connected
+
+	// Publish to the topic.
+	topic.Pub("test")
+
+	// Wait for the message to be received.
+	<-done
+
+	// Check if both instances received the message over the same connection.
+	count := 0
+	for _, d := range data {
+		for _, u := range d.InstanceData {
+			for _, up := range u.Data.Updates {
+				if up.Data != "test" {
+					count++
+					t.Errorf("Expected test, got %s", d.InstanceData[0].Data.Updates[0].Data)
+				}
+			}
+		}
+	}
+
+	if count != 2 {
+		t.Errorf("Expected 2, got %d", count)
+	}
+}
