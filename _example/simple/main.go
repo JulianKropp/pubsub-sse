@@ -135,7 +135,12 @@ func main() {
 			time.Sleep(5 * time.Second)
 
 			instances := ssePubSub.GetInstances()
-			log.Infof("[sys]: Instances: %d", len(instances))
+			log.Infof("--------------------")
+			log.Infof("[sys]: Instances: %d: ", len(instances))
+			for _, instance := range instances {
+				log.Infof("[sys]: Instance: %s %s", instance.GetID(), instance.GetConnectionID())
+			}
+			log.Infof("--------------------\n")
 		}
 	}()
 
